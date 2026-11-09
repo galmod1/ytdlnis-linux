@@ -131,6 +131,19 @@ flatpak build-bundle exportrepo org.galmod.ytdlnis.linux-0.1.0.flatpak org.galmo
 ملاحظة: داخل الحزمة، ثيم النظام من GNOME (Adwaita) وليس ثيم سطح المكتب؛ اختر «داكن/فاتح» من الإعدادات.
 
 
+## إخلاء المسؤولية
+
+- هذا البرنامج أداة تقنية محايدة لتحميل المحتوى من المواقع التي يدعمها محرّك yt-dlp.
+- يقع على عاتق المستخدم وحده التأكد من أن استخدامه يوافق قوانين بلده، وشروط خدمة المواقع، وحقوق أصحاب المحتوى.
+- المطوّر غير مسؤول عن أي استخدام مخالف، ولا عن أي محتوى يُحمَّل بواسطة البرنامج.
+- المقصود بالبرنامج الاستخدام الشخصي؛ ولا يجوز استخدامه لإعادة نشر أو بيع محتوى محمي بحقوق النشر.
+- البرنامج لا يتجاوز حماية DRM ولا يفكّ تشفير المحتوى المدفوع.
+- البرنامج غير مرتبط ولا مدعوم من أي منصة محتوى، ولا من مشروع YTDLnis الأصلي.
+
+### Disclaimer (English)
+
+This software is a neutral technical tool. Users are solely responsible for ensuring their use complies with local laws, the terms of service of the sites involved, and copyright. The developer is not liable for any misuse or for content downloaded with it. It is intended for personal use; redistributing or selling copyrighted content is prohibited. The software does not circumvent DRM. Not affiliated with any content platform or with the original YTDLnis project.
+
 ## Contributing
 
 Pull requests and issues are welcome. The UI is translated in `core/i18n.py`.
