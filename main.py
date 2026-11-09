@@ -11,6 +11,7 @@ from gi.repository import Gdk, Gtk
 
 from core.i18n import set_language
 from core.settings import Settings
+from core.theme import apply_theme
 from ui.window import MainWindow
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -25,6 +26,7 @@ class App(Gtk.Application):
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
+        apply_theme(self.settings.get("theme", "system"))
         provider = Gtk.CssProvider()
         provider.load_from_path(os.path.join(ASSETS, "style.css"))
         Gtk.StyleContext.add_provider_for_display(

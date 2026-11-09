@@ -26,6 +26,7 @@ DEFAULTS = {
     "concurrent_fragments": 4,
     "speed_limit_kb": 0,
     "language": "ar",
+    "theme": "system",
 }
 
 

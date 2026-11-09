@@ -9,6 +9,7 @@ from gi.repository import Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
 from core.models import human_size
+from core.theme import THEME_KEYS, THEME_VALUES, apply_theme
 
 COOKIES_VALUES = ["", "firefox", "chrome", "chromium", "brave", "edge"]
 
@@ -52,6 +53,11 @@ class SettingsDialog(Gtk.Window):
         lang = settings.get("language", "ar")
         self.lang_dd.set_selected(LANG_VALUES.index(lang) if lang in LANG_VALUES else 0)
         box.append(_row(t("settings.language"), self.lang_dd))
+
+        self.theme_dd = Gtk.DropDown.new_from_strings([t(k) for k in THEME_KEYS])
+        th = settings.get("theme", "system")
+        self.theme_dd.set_selected(THEME_VALUES.index(th) if th in THEME_VALUES else 0)
+        box.append(_row(t("settings.appearance"), self.theme_dd))
 
         self.folder_entry = Gtk.Entry(text=settings["download_dir"])
         folder_btn = Gtk.Button(label=t("settings.choose"))
@@ -184,6 +190,7 @@ class SettingsDialog(Gtk.Window):
 
         d = DEFAULTS
         self.lang_dd.set_selected(LANG_VALUES.index(d["language"]))
+        self.theme_dd.set_selected(THEME_VALUES.index(d["theme"]))
         self.folder_entry.set_text(d["download_dir"])
         self.template_entry.set_text(d["filename_template"])
         self.conc_spin.set_value(int(d["concurrent_downloads"]))
@@ -250,6 +257,7 @@ class SettingsDialog(Gtk.Window):
         s["proxy"] = self.proxy_entry.get_text().strip()
         s["extra_args"] = self.extra_entry.get_text().strip()
         s["language"] = LANG_VALUES[self.lang_dd.get_selected()]
+        s["theme"] = THEME_VALUES[self.theme_dd.get_selected()]
         try:
             s.save()
         except OSError as exc:
@@ -259,6 +267,7 @@ class SettingsDialog(Gtk.Window):
         lang_changed = s["language"] != old_lang
         if lang_changed:
             set_language(s["language"])
+        apply_theme(s["theme"])
         self.on_saved(lang_changed)
         self.destroy()
 
