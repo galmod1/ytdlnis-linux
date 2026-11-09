@@ -11,3 +11,4 @@ export/
 repo/
 exportrepo/
 *.flatpak
+.flatpak-builder/
