@@ -17,6 +17,58 @@ from ui.dialogs import FormatDialog, SettingsDialog
 VERSION = ytdlp.ytdlp_version()
 
 
+class GroupRow(Gtk.ListBoxRow):
+    """Header row for an expanded playlist."""
+
+    def __init__(self, win, gid, title, count):
+        super().__init__()
+        self.win = win
+        self.gid = gid
+        self.total = count
+        self.add_css_class("group-row")
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.set_margin_top(10)
+        box.set_margin_bottom(10)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+
+        self.label = Gtk.Label(xalign=0, hexpand=True)
+        self.label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.label.add_css_class("dl-title")
+        box.append(self.label)
+
+        self.count = Gtk.Label(xalign=1)
+        self.count.add_css_class("dim")
+        box.append(self.count)
+
+        btn_all = Gtk.Button(label="تحميل الكل")
+        btn_all.add_css_class("suggested-action")
+        btn_all.connect("clicked", lambda b: win.download_group(gid))
+        box.append(btn_all)
+
+        btn_rm = Gtk.Button(label="إزالة")
+        btn_rm.connect("clicked", lambda b: win.remove_group(gid))
+        box.append(btn_rm)
+
+        self.set_child(box)
+        self.set_title(title, count)
+
+    def set_title(self, title, count):
+        self.total = count
+        self.label.set_text(f"قائمة تشغيل: {title}")
+        self.label.set_tooltip_text(title)
+        self.count.set_text(f"{count} عنصر")
+
+    def set_progress(self, done, total, active):
+        parts = [f"{total} عنصر"]
+        if done:
+            parts.append(f"{done}/{total} مكتمل")
+        if active:
+            parts.append(f"{active} قيد التحميل")
+        self.count.set_text(" • ".join(parts))
+
+
 class DownloadRow(Gtk.ListBoxRow):
     def __init__(self, item, win):
         super().__init__()
@@ -133,6 +185,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.settings = app.settings
         self.items = {}
         self.rows = {}
+        self.groups = {}
+        self._gid = 0
         self.manager = DownloadManager(self.settings, self.on_item_update)
 
         self.set_default_size(920, 660)
@@ -237,6 +291,7 @@ class MainWindow(Gtk.ApplicationWindow):
                 self.quick_download(item)
         else:
             fetch_async(url, self._extra(), lambda k, p, e: self._on_info(item, k, p, e))
+        return item
 
     def _extra(self):
         extra = []
@@ -260,16 +315,25 @@ class MainWindow(Gtk.ApplicationWindow):
                 self.refresh(item)
                 return
             self._drop_item(item.id)
+            self._gid += 1
+            gid = self._gid
+            grow = GroupRow(self, gid, payload.get("title") or "قائمة تشغيل", 0)
+            self.listbox.append(grow)
+            self.groups[gid] = {"items": [], "row": grow}
+            count = 0
             for e in entries:
                 u = ytdlp.entry_url(e)
                 if not u:
                     continue
-                self.add_url(
+                child = self.add_url(
                     u,
                     title=e.get("title") or u,
                     duration=e.get("duration"),
                     entry_mode=True,
                 )
+                self.groups[gid]["items"].append(child)
+                count += 1
+            grow.set_title(payload.get("title") or "قائمة تشغيل", count)
             self.update_footer()
             return
         ytdlp.apply_video_info(item, payload)
@@ -338,6 +402,37 @@ class MainWindow(Gtk.ApplicationWindow):
         self.items.pop(item_id, None)
         self.update_footer()
 
+    # ---------- playlist groups ----------
+    def download_group(self, gid):
+        g = self.groups.get(gid)
+        if not g:
+            return
+        for it in g["items"]:
+            if it.status == "READY":
+                self.quick_download(it)
+
+    def remove_group(self, gid):
+        g = self.groups.pop(gid, None)
+        if not g:
+            return
+        for it in list(g["items"]):
+            self.remove_item(it)
+        self.listbox.remove(g["row"])
+        self.update_footer()
+
+    def _refresh_groups(self):
+        for gid, g in self.groups.items():
+            items = g["items"]
+            if not items:
+                continue
+            done = sum(1 for it in items if it.status == "DONE")
+            active = sum(
+                1
+                for it in items
+                if it.status in ("QUEUED", "DOWNLOADING", "PROCESSING")
+            )
+            g["row"].set_progress(done, len(items), active)
+
     def open_folder(self, item):
         path = self.settings["download_dir"]
         if item.filepath and os.path.exists(item.filepath):
@@ -362,6 +457,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def on_item_update(self, item):
         self.refresh(item)
+        self._refresh_groups()
         self.update_footer()
 
     def update_footer(self):
