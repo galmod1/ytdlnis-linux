@@ -33,10 +33,6 @@ class SettingsDialog(Gtk.Window):
 
         hb = Gtk.HeaderBar()
         self.set_titlebar(hb)
-        save_btn = Gtk.Button(label="حفظ")
-        save_btn.add_css_class("suggested-action")
-        save_btn.connect("clicked", self._on_save)
-        hb.pack_end(save_btn)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         box.set_margin_top(16)
@@ -135,7 +131,33 @@ class SettingsDialog(Gtk.Window):
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(box)
         scrolled.set_vexpand(True)
-        self.set_child(scrolled)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(scrolled)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        back_btn = Gtk.Button(label="رجوع بلا حفظ")
+        back_btn.set_tooltip_text("إغلاق الإعدادات دون تطبيق أي تغيير")
+        back_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(back_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+
+        save_btn = Gtk.Button(label="حفظ التغييرات")
+        save_btn.add_css_class("suggested-action")
+        save_btn.connect("clicked", self._on_save)
+        actions.append(save_btn)
+
+        root.append(actions)
+        self.set_child(root)
 
     def _pick_folder(self, _btn):
         current = self.folder_entry.get_text().strip() or os.path.expanduser("~")
@@ -143,9 +165,55 @@ class SettingsDialog(Gtk.Window):
             self, current, lambda path: self.folder_entry.set_text(path)
         ).present()
 
+    def _alert(self, message):
+        try:
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                modal=True,
+                buttons=Gtk.ButtonsType.CLOSE,
+                text=message,
+            )
+            dialog.present()
+        except Exception:
+            print("SETTINGS ERROR:", message)
+
+    def _log_save(self, s):
+        try:
+            import datetime
+            import json
+
+            from core.settings import CONFIG_DIR
+
+            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            keys = (
+                "download_dir",
+                "concurrent_downloads",
+                "external_downloader",
+                "aria2c_connections",
+                "concurrent_fragments",
+                "format_preset",
+                "quick_mode",
+            )
+            line = (
+                datetime.datetime.now().isoformat(timespec="seconds")
+                + " "
+                + json.dumps({k: s[k] for k in keys}, ensure_ascii=False)
+                + "\n"
+            )
+            with open(CONFIG_DIR / "save.log", "a", encoding="utf-8") as f:
+                f.write(line)
+        except OSError:
+            pass
+
     def _on_save(self, _btn):
         s = self.settings
-        s["download_dir"] = self.folder_entry.get_text().strip() or s["download_dir"]
+        new_dir = self.folder_entry.get_text().strip() or s["download_dir"]
+        try:
+            os.makedirs(new_dir, exist_ok=True)
+        except OSError as exc:
+            self._alert(f"تعذّر إنشاء مجلد الحفظ:\n{new_dir}\n{exc}")
+            return
+        s["download_dir"] = new_dir
         s["filename_template"] = self.template_entry.get_text().strip() or s["filename_template"]
         s["concurrent_downloads"] = int(self.conc_spin.get_value())
         s["quick_mode"] = self.quick_check.get_active()
@@ -162,7 +230,12 @@ class SettingsDialog(Gtk.Window):
         s["cookies_from_browser"] = "" if ck == "بدون" else ck
         s["proxy"] = self.proxy_entry.get_text().strip()
         s["extra_args"] = self.extra_entry.get_text().strip()
-        s.save()
+        try:
+            s.save()
+        except OSError as exc:
+            self._alert(f"تعذّر حفظ ملف الإعدادات:\n{exc}")
+            return
+        self._log_save(s)
         self.on_saved()
         self.destroy()
 

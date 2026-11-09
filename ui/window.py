@@ -503,6 +503,10 @@ class MainWindow(Gtk.ApplicationWindow):
         def saved():
             self.manager.pump()
             self.update_footer()
+            self.footer.set_text(
+                f"✓ حُفظت الإعدادات — الحفظ في: {self.settings['download_dir']}"
+            )
+            GLib.timeout_add_seconds(4, lambda: (self.update_footer(), False)[1])
 
         SettingsDialog(self, self.settings, saved).present()
 
