@@ -351,7 +351,9 @@ class MainWindow(Gtk.ApplicationWindow):
         extra = []
         if self.settings["proxy"]:
             extra += ["--proxy", self.settings["proxy"]]
-        if self.settings["cookies_from_browser"]:
+        if self.settings.get("cookies_file"):
+            extra += ["--cookies", self.settings["cookies_file"]]
+        elif self.settings["cookies_from_browser"]:
             extra += ["--cookies-from-browser", self.settings["cookies_from_browser"]]
         return extra
 

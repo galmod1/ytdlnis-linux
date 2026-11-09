@@ -20,6 +20,7 @@ DEFAULTS = {
     "format_preset": "best",  # best | video_1080 | video_720 | audio_mp3 | audio_m4a
     "proxy": "",
     "cookies_from_browser": "",
+    "cookies_file": "",
     "extra_args": "",
     "external_downloader": "",  # "" | "aria2c"
     "aria2c_connections": 4,

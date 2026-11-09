@@ -128,7 +128,9 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         out += ["--sponsorblock-remove", settings["sponsorblock_categories"] or "sponsor"]
     if settings["proxy"]:
         out += ["--proxy", settings["proxy"]]
-    if settings["cookies_from_browser"]:
+    if settings.get("cookies_file"):
+        out += ["--cookies", settings["cookies_file"]]
+    elif settings["cookies_from_browser"]:
         out += ["--cookies-from-browser", settings["cookies_from_browser"]]
     if mode == "audio":
         out += [

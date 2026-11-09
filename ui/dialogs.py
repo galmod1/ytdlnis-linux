@@ -139,6 +139,16 @@ class SettingsDialog(Gtk.Window):
         box.append(_row(t("settings.cookies"), self.cookies_dd,
                         t("settings.cookies_tip")))
 
+        self.cookies_file_entry = Gtk.Entry(text=settings.get("cookies_file", ""))
+        cf_btn = Gtk.Button(label=t("settings.choose"))
+        cf_btn.connect("clicked", self._pick_cookies_file)
+        cf_box = Gtk.Box(spacing=8)
+        cf_box.append(self.cookies_file_entry)
+        cf_box.append(cf_btn)
+        self.cookies_file_entry.set_hexpand(True)
+        box.append(_row(t("settings.cookies_file"), cf_box,
+                        t("settings.cookies_file_tip")))
+
         self.proxy_entry = Gtk.Entry(text=settings["proxy"])
         box.append(_row(t("settings.proxy"), self.proxy_entry,
                         t("settings.proxy_tip")))
@@ -206,6 +216,7 @@ class SettingsDialog(Gtk.Window):
         self.sub_langs.set_text(d["sub_langs"])
         self.sb_check.set_active(bool(d["sponsorblock"]))
         self.cookies_dd.set_selected(0)
+        self.cookies_file_entry.set_text(d["cookies_file"])
         self.proxy_entry.set_text(d["proxy"])
         self.extra_entry.set_text(d["extra_args"])
         self.note.set_text(t("settings.restore_note"))
@@ -214,6 +225,15 @@ class SettingsDialog(Gtk.Window):
         current = self.folder_entry.get_text().strip() or os.path.expanduser("~")
         FolderPickerDialog(
             self, current, lambda path: self.folder_entry.set_text(path)
+        ).present()
+
+    def _pick_cookies_file(self, _btn):
+        current = self.cookies_file_entry.get_text().strip()
+        start = os.path.expanduser("~")
+        if current and os.path.isdir(os.path.dirname(current)):
+            start = os.path.dirname(current)
+        FilePickerDialog(
+            self, start, lambda path: self.cookies_file_entry.set_text(path)
         ).present()
 
     def _alert(self, message):
@@ -254,6 +274,11 @@ class SettingsDialog(Gtk.Window):
         s["concurrent_fragments"] = int(self.frag_spin.get_value())
         ck = COOKIES_VALUES[self.cookies_dd.get_selected()]
         s["cookies_from_browser"] = ck
+        cf = self.cookies_file_entry.get_text().strip()
+        if cf and not os.path.isfile(cf):
+            self._alert(t("err.cookies_file", path=cf))
+            return
+        s["cookies_file"] = cf
         s["proxy"] = self.proxy_entry.get_text().strip()
         s["extra_args"] = self.extra_entry.get_text().strip()
         s["language"] = LANG_VALUES[self.lang_dd.get_selected()]
@@ -549,3 +574,126 @@ class FolderPickerDialog(Gtk.Window):
     def _choose(self, _b):
         self.on_choose(self.current)
         self.destroy()
+
+
+class FilePickerDialog(Gtk.Window):
+    """Self-contained file browser for choosing a cookies file."""
+
+    def __init__(self, parent, start_path, on_choose):
+        super().__init__(title=t("fp.title"), modal=True, transient_for=parent)
+        self.set_default_size(660, 600)
+        self.on_choose = on_choose
+        self.current = (
+            start_path if start_path and os.path.isdir(start_path) else os.path.expanduser("~")
+        )
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(12)
+        box.set_margin_bottom(12)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+
+        path_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.path_entry = Gtk.Entry()
+        self.path_entry.set_hexpand(True)
+        self.path_entry.connect("activate", self._go_typed)
+        path_box.append(self.path_entry)
+        go_btn = Gtk.Button(label=t("folder.go"))
+        go_btn.connect("clicked", self._go_typed)
+        path_box.append(go_btn)
+        box.append(path_box)
+
+        self.listbox = Gtk.ListBox()
+        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.listbox.connect("row-activated", self._activated)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(self.listbox)
+        scrolled.set_vexpand(True)
+        box.append(scrolled)
+
+        self.message = Gtk.Label(label="", xalign=0)
+        self.message.add_css_class("dim")
+        self.message.set_wrap(True)
+        box.append(self.message)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+
+        root.append(actions)
+        self.set_child(root)
+        self._reload()
+
+    def _add_row(self, label, payload):
+        row = Gtk.ListBoxRow()
+        lab = Gtk.Label(label=label, xalign=0)
+        lab.set_margin_top(8)
+        lab.set_margin_bottom(8)
+        lab.set_margin_start(6)
+        lab.set_margin_end(6)
+        row.set_child(lab)
+        row.payload = payload
+        self.listbox.append(row)
+
+    def _reload(self):
+        child = self.listbox.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            self.listbox.remove(child)
+            child = nxt
+
+        self.path_entry.set_text(self.current)
+        parent = os.path.dirname(self.current)
+        if parent and parent != self.current:
+            self._add_row(t("folder.up"), (parent, True))
+
+        try:
+            entries = [
+                e
+                for e in os.scandir(self.current)
+                if not e.name.startswith(".")
+            ]
+        except OSError as exc:
+            self.message.set_text(t("folder.unreadable", error=exc))
+            return
+
+        dirs = sorted([e for e in entries if e.is_dir()], key=lambda e: e.name.casefold())
+        files = sorted([e for e in entries if e.is_file()], key=lambda e: e.name.casefold())
+        for e in dirs:
+            self._add_row(f"📁 {e.name}", (e.path, True))
+        for e in files:
+            self._add_row(f"📄 {e.name}", (e.path, False))
+        total = len(dirs) + len(files)
+        self.message.set_text(t("fp.items", n=total) if total else t("fp.empty"))
+
+    def _go(self, path):
+        path = os.path.abspath(os.path.expanduser(path))
+        if os.path.isdir(path):
+            self.current = path
+            self._reload()
+        else:
+            self.message.set_text(t("folder.not_found"))
+
+    def _go_typed(self, _b):
+        self._go(self.path_entry.get_text().strip())
+
+    def _activated(self, _lb, row):
+        payload = getattr(row, "payload", None)
+        if not payload:
+            return
+        path, is_dir = payload
+        if is_dir:
+            self._go(path)
+        else:
+            self.on_choose(path)
+            self.destroy()
