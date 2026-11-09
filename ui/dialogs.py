@@ -145,6 +145,10 @@ class SettingsDialog(Gtk.Window):
         cf_box = Gtk.Box(spacing=8)
         cf_box.append(self.cookies_file_entry)
         cf_box.append(cf_btn)
+        imp_btn = Gtk.Button(label=t("settings.import_cookies"))
+        imp_btn.set_tooltip_text(t("settings.import_cookies_tip"))
+        imp_btn.connect("clicked", self._import_cookies)
+        cf_box.append(imp_btn)
         self.cookies_file_entry.set_hexpand(True)
         box.append(_row(t("settings.cookies_file"), cf_box,
                         t("settings.cookies_file_tip")))
@@ -235,6 +239,22 @@ class SettingsDialog(Gtk.Window):
         FilePickerDialog(
             self, start, lambda path: self.cookies_file_entry.set_text(path)
         ).present()
+
+    def _import_cookies(self, _btn):
+        from core.cookies_import import export_firefox_cookies
+        from core.settings import CONFIG_DIR
+
+        dest = CONFIG_DIR / "cookies.txt"
+        try:
+            count = export_firefox_cookies(dest)
+        except Exception as exc:
+            self._alert(t("err.import_cookies", error=exc))
+            return
+        if count <= 0:
+            self._alert(t("err.import_empty"))
+            return
+        self.cookies_file_entry.set_text(str(dest))
+        self.note.set_text(t("settings.import_done", n=count, path=str(dest)))
 
     def _alert(self, message):
         try:
