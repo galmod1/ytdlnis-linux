@@ -139,9 +139,16 @@ class SettingsDialog(Gtk.Window):
         actions.set_margin_start(12)
         actions.set_margin_end(12)
 
-        back_btn = Gtk.Button(label="رجوع بلا حفظ")
-        back_btn.set_tooltip_text("إغلاق الإعدادات دون تطبيق أي تغيير")
-        back_btn.connect("clicked", lambda b: self.destroy())
+        self.note = Gtk.Label(label="", xalign=0)
+        self.note.set_wrap(True)
+        self.note.add_css_class("dim")
+        self.note.set_margin_start(12)
+        self.note.set_margin_end(12)
+        root.append(self.note)
+
+        back_btn = Gtk.Button(label="استعادة الافتراضي")
+        back_btn.set_tooltip_text("إرجاع كل الحقول إلى قيم المصنع — ثم اضغط «حفظ التغييرات» لتثبيتها")
+        back_btn.connect("clicked", self._restore_defaults)
         actions.append(back_btn)
 
         spacer = Gtk.Box()
@@ -155,6 +162,33 @@ class SettingsDialog(Gtk.Window):
 
         root.append(actions)
         self.set_child(root)
+
+    def _restore_defaults(self, _btn):
+        from core.settings import DEFAULTS
+
+        d = DEFAULTS
+        self.folder_entry.set_text(d["download_dir"])
+        self.template_entry.set_text(d["filename_template"])
+        self.conc_spin.set_value(int(d["concurrent_downloads"]))
+        self.quick_check.set_active(bool(d["quick_mode"]))
+        self.preset_dd.set_selected(self.presets.index(d["format_preset"]))
+        self.engine_dd.set_selected(self.engines.index(d["external_downloader"]))
+        self.conn_spin.set_value(int(d["aria2c_connections"]))
+        self.frag_spin.set_value(int(d["concurrent_fragments"]))
+        self.thumb_check.set_active(bool(d["embed_thumbnail"]))
+        self.meta_check.set_active(bool(d["embed_metadata"]))
+        self.subs_check.set_active(bool(d["write_subs"]))
+        self.sub_langs.set_text(d["sub_langs"])
+        self.sb_check.set_active(bool(d["sponsorblock"]))
+        ck = d["cookies_from_browser"] or "بدون"
+        self.cookies_dd.set_selected(
+            COOKIES_CHOICES.index(ck) if ck in COOKIES_CHOICES else 0
+        )
+        self.proxy_entry.set_text(d["proxy"])
+        self.extra_entry.set_text(d["extra_args"])
+        self.note.set_text(
+            "✓ استُعيدت القيم الافتراضية في الحقول — اضغط «حفظ التغييرات» لتثبيتها، أو أغلق النافذة للتجاهل."
+        )
 
     def _pick_folder(self, _btn):
         current = self.folder_entry.get_text().strip() or os.path.expanduser("~")
