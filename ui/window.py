@@ -125,6 +125,10 @@ class DownloadRow(Gtk.ListBoxRow):
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="YTDLnis Linux")
+        try:
+            self.set_icon_name("org.galmod.ytdlnis.linux")
+        except Exception:
+            pass
         self.app = app
         self.settings = app.settings
         self.items = {}
@@ -134,9 +138,18 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_default_size(920, 660)
 
         hb = Gtk.HeaderBar()
+        hb.set_show_title_buttons(True)
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        try:
+            logo = Gtk.Image.new_from_file(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "logo.png"))
+            logo.set_pixel_size(26)
+            title_box.append(logo)
+        except Exception:
+            pass
         title_lab = Gtk.Label(label="YTDLnis Linux")
         title_lab.add_css_class("dl-title")
-        hb.set_title_widget(title_lab)
+        title_box.append(title_lab)
+        hb.set_title_widget(title_box)
 
         settings_btn = Gtk.Button(label="الإعدادات")
         settings_btn.connect("clicked", self.open_settings)
