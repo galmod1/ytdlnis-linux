@@ -120,6 +120,14 @@ flatpak run org.galmod.ytdlnis.linux
 
 الصلاحيات الممنوحة: الشبكة، Wayland/X11، القرص الرسومي، مجلد التحميلات (xdg-download)، وقراءة فقط لمجلدَي Firefox وLibreWolf لزر استيراد الكوكيز. لا وصول لباقي ملفات المنزل.
 
+لإخراج ملف واحد قابل للمشاركة:
+
+```
+flatpak build-bundle exportrepo org.galmod.ytdlnis.linux-0.1.0.flatpak org.galmod.ytdlnis.linux master
+```
+
+المستلم يثبّته بـ `flatpak install org.galmod.ytdlnis.linux-0.1.0.flatpak` (يحتاج Flathub لتنزيل طبقة GNOME//50 مرة واحدة).
+
 ملاحظة: داخل الحزمة، ثيم النظام من GNOME (Adwaita) وليس ثيم سطح المكتب؛ اختر «داكن/فاتح» من الإعدادات.
 
 

@@ -9,3 +9,5 @@ builddir/
 flatpak-build.log
 export/
 repo/
+exportrepo/
+*.flatpak
