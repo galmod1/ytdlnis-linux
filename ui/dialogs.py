@@ -31,9 +31,6 @@ class SettingsDialog(Gtk.Window):
         self.settings = settings
         self.on_saved = on_saved
 
-        hb = Gtk.HeaderBar()
-        self.set_titlebar(hb)
-
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         box.set_margin_top(16)
         box.set_margin_bottom(16)
@@ -207,7 +204,6 @@ class SettingsDialog(Gtk.Window):
         except OSError as exc:
             self._alert(f"تعذّر حفظ ملف الإعدادات:\n{exc}")
             return
-        self._log_save(s)
         self.on_saved()
         self.destroy()
 
@@ -220,9 +216,6 @@ class FormatDialog(Gtk.Window):
         self.set_default_size(600, 700)
         self.item = item
         self.on_choose = on_choose
-
-        hb = Gtk.HeaderBar()
-        self.set_titlebar(hb)
 
         listbox = Gtk.ListBox()
         listbox.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -324,9 +317,6 @@ class PlaylistFormatDialog(Gtk.Window):
         )
         self.set_default_size(500, 460)
 
-        hb = Gtk.HeaderBar()
-        self.set_titlebar(hb)
-
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box.set_margin_top(12)
         box.set_margin_bottom(12)
@@ -374,18 +364,11 @@ class FolderPickerDialog(Gtk.Window):
 
     def __init__(self, parent, start_path, on_choose):
         super().__init__(title="اختر مجلد التحميل", modal=True, transient_for=parent)
-        self.set_default_size(660, 560)
+        self.set_default_size(660, 600)
         self.on_choose = on_choose
         self.current = (
             start_path if start_path and os.path.isdir(start_path) else os.path.expanduser("~")
         )
-
-        hb = Gtk.HeaderBar()
-        self.set_titlebar(hb)
-        choose_btn = Gtk.Button(label="اختيار هذا المجلد")
-        choose_btn.add_css_class("suggested-action")
-        choose_btn.connect("clicked", self._choose)
-        hb.pack_end(choose_btn)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box.set_margin_top(12)
@@ -416,7 +399,31 @@ class FolderPickerDialog(Gtk.Window):
         self.message.set_wrap(True)
         box.append(self.message)
 
-        self.set_child(box)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        cancel_btn = Gtk.Button(label="إلغاء")
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+
+        choose_btn = Gtk.Button(label="اختيار هذا المجلد")
+        choose_btn.add_css_class("suggested-action")
+        choose_btn.connect("clicked", self._choose)
+        actions.append(choose_btn)
+
+        root.append(actions)
+        self.set_child(root)
         self._reload()
 
     def _add_row(self, label, payload):
