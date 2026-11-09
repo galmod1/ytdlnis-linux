@@ -17,20 +17,19 @@ from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, S
 VERSION = ytdlp.ytdlp_version()
 
 SECTION_DEFS = [
+    ("home", "الرئيسية"),
     ("groups", "قوائم التشغيل"),
     ("downloading", "جارٍ التحميل الآن"),
     ("queued", "في الانتظار"),
-    ("ready", "جاهزة للتحميل"),
     ("paused", "موقوفة مؤقتاً"),
     ("done", "مكتملة"),
     ("error", "فاشلة"),
     ("cancelled", "ملغاة"),
-    ("new", "قيد جلب المعلومات"),
 ]
 
 STATUS_SECTION = {
-    "NEW": "new",
-    "READY": "ready",
+    "NEW": "home",
+    "READY": "home",
     "QUEUED": "queued",
     "DOWNLOADING": "downloading",
     "PROCESSING": "downloading",
@@ -291,7 +290,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.sections = {}
         for key, title in SECTION_DEFS:
             self._make_section(key, title)
-        self.stack.set_visible_child_name("downloading")
+        self.stack.set_visible_child_name("home")
 
         self.footer = Gtk.Label(label="", xalign=0)
         self.footer.add_css_class("dim")
