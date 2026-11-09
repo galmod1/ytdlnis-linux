@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=YTDLnis Linux
+Name[ar]=YTDLnis لينكس
+Comment=Download video and audio with yt-dlp
+Comment[ar]=تحميل الفيديو والصوت بواسطة yt-dlp
+Exec=ytdlnis-linux
+Icon=org.galmod.ytdlnis.linux
+Terminal=false
+Categories=Network;AudioVideo;
+StartupWMClass=org.galmod.ytdlnis.linux
+StartupNotify=true

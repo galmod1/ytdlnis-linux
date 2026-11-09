@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.galmod.ytdlnis.linux</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>YTDLnis Linux</name>
+  <summary>Download video and audio from YouTube and 1000+ sites</summary>
+  <summary xml:lang="ar">تحميل الفيديو والصوت من يوتيوب وأكثر من ألف موقع</summary>
+  <description>
+    <p>A native GTK4 desktop front-end for the yt-dlp engine, inspired by YTDLnis for Android.</p>
+    <p>Features a download queue with progress and speed, per-item and whole-playlist format selection, aria2c acceleration, speed limiting, subtitles, SponsorBlock and an Arabic/English/French interface.</p>
+    <ul>
+      <li>Paste multiple links or search directly</li>
+      <li>Playlists: download all, one format for the whole list</li>
+      <li>Status tabs, pause/resume/cancel/retry</li>
+      <li>Cookies via a local cookies.txt file (Firefox import)</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">org.galmod.ytdlnis.linux.desktop</launchable>
+  <url type="homepage">https://github.com/galmod/ytdlnis-linux</url>
+  <url type="bugtracker">https://github.com/galmod/ytdlnis-linux/issues</url>
+  <developer_name>Galmod</developer_name>
+  <releases>
+    <release version="0.1.0" date="2026-11-09">
+      <description>
+        <p>First public release.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

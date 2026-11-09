@@ -96,6 +96,33 @@ run.sh               ملف التشغيل
 - النسخ الاحتياطي والاستعادة
 - تغليف Flatpak
 
+## Flatpak
+
+حزمة جاهزة للبناء الذاتي:
+
+```
+flatpak/org.galmod.ytdlnis.linux.yaml   وصفة البناء
+flatpak/build.sh                        بناء وتثبيت للمستخدم الحالي (بلا كلمة مرور)
+```
+
+المتطلبات مرة واحدة: أدوات البناء من Flathub:
+
+```
+flatpak install --user flathub org.flatpak.Builder org.gnome.Platform//50 org.gnome.Sdk//50
+```
+
+ثم:
+
+```
+./flatpak/build.sh
+flatpak run org.galmod.ytdlnis.linux
+```
+
+الصلاحيات الممنوحة: الشبكة، Wayland/X11، القرص الرسومي، مجلد التحميلات (xdg-download)، وقراءة فقط لمجلدَي Firefox وLibreWolf لزر استيراد الكوكيز. لا وصول لباقي ملفات المنزل.
+
+ملاحظة: داخل الحزمة، ثيم النظام من GNOME (Adwaita) وليس ثيم سطح المكتب؛ اختر «داكن/فاتح» من الإعدادات.
+
+
 ## Contributing
 
 Pull requests and issues are welcome. The UI is translated in `core/i18n.py`.

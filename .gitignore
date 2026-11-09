@@ -5,3 +5,7 @@ __pycache__/
 venv/
 *.log
 .DS_Store
+builddir/
+flatpak-build.log
+export/
+repo/

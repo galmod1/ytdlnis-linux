@@ -6,8 +6,25 @@ from pathlib import Path
 CONFIG_DIR = Path(os.path.expanduser("~/.config/ytdlnis-linux"))
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
+
+def _default_download_dir():
+    """XDG download dir (maps to the host folder inside a Flatpak sandbox)."""
+    try:
+        import gi
+
+        gi.require_version("GLib", "2.0")
+        from gi.repository import GLib
+
+        folder = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD)
+        if folder:
+            return folder
+    except Exception:
+        pass
+    return str(Path.home() / "Downloads")
+
+
 DEFAULTS = {
-    "download_dir": str(Path.home() / "Downloads"),
+    "download_dir": _default_download_dir(),
     "concurrent_downloads": 2,
     "filename_template": "%(title)s [%(id)s].%(ext)s",
     "embed_thumbnail": True,
