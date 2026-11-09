@@ -196,6 +196,7 @@ class DownloadRow(Gtk.ListBoxRow):
             self.actions.append(self._button("الصيغة…", lambda b: w.choose_format(it)))
             self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
         elif it.status == "DONE":
+            self.actions.append(self._button("فتح الملف", lambda b: w.open_file(it)))
             self.actions.append(self._button("فتح المجلد", lambda b: w.open_folder(it)))
             self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
         elif it.status in ("ERROR", "CANCELLED"):
@@ -537,6 +538,14 @@ class MainWindow(Gtk.ApplicationWindow):
         if item.filepath and os.path.exists(item.filepath):
             path = os.path.dirname(item.filepath)
         subprocess.Popen(["xdg-open", path])
+
+    def open_file(self, item):
+        if item.filepath and os.path.exists(item.filepath):
+            subprocess.Popen(["xdg-open", item.filepath])
+        else:
+            self.footer.set_text(
+                "الملف غير موجود — ربما نُقل أو حُذف من مجلد التحميل"
+            )
 
     def _open_download_dir(self, _b):
         os.makedirs(self.settings["download_dir"], exist_ok=True)
