@@ -13,6 +13,7 @@ from core import ytdlp
 from core.downloader import DownloadManager, fetch_async
 from core.i18n import t
 from core.models import DownloadItem
+from core.version import APP_NAME, APP_VERSION
 from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, SettingsDialog
 
 VERSION = ytdlp.ytdlp_version()
@@ -614,6 +615,7 @@ class MainWindow(Gtk.ApplicationWindow):
         done = sum(1 for it in self.items.values() if it.status == "DONE")
         folder = os.path.basename(self.settings["download_dir"].rstrip("/")) or self.settings["download_dir"]
         parts = [
+            f"{APP_NAME} v{APP_VERSION}",
             f"yt-dlp {VERSION}",
             t("footer.running", n=running),
             t("footer.done", n=done),

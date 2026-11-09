@@ -7,3 +7,4 @@
 
 - Inspired by YTDLnis by Denis Çerri (GPL-3.0):
   https://github.com/deniscerri/ytdlnis
+  This project is independent and not affiliated with the original author.
