@@ -12,3 +12,4 @@ repo/
 exportrepo/
 *.flatpak
 .flatpak-builder/
+PROGRESS.md
