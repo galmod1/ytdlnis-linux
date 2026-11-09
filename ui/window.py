@@ -276,24 +276,22 @@ class MainWindow(Gtk.ApplicationWindow):
         sep = Gtk.Separator()
         root.append(sep)
 
-        self.sections_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.switcher = Gtk.StackSwitcher()
+        self.switcher.set_halign(Gtk.Align.CENTER)
+        self.switcher.set_margin_top(6)
+        self.switcher.set_margin_bottom(6)
+        root.append(self.switcher)
+
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.stack.set_vexpand(True)
+        self.switcher.set_stack(self.stack)
+        root.append(self.stack)
+
         self.sections = {}
         for key, title in SECTION_DEFS:
             self._make_section(key, title)
-
-        self.empty_label = Gtk.Label(
-            label="لا تحميلات بعد — الصق رابطاً في الأعلى أو اكتب بحثاً.",
-            xalign=0,
-        )
-        self.empty_label.add_css_class("dim")
-        self.empty_label.set_margin_top(24)
-        self.empty_label.set_margin_start(12)
-        self.sections_box.append(self.empty_label)
-
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_child(self.sections_box)
-        scrolled.set_vexpand(True)
-        root.append(scrolled)
+        self.stack.set_visible_child_name("downloading")
 
         self.footer = Gtk.Label(label="", xalign=0)
         self.footer.add_css_class("dim")
@@ -585,26 +583,15 @@ class MainWindow(Gtk.ApplicationWindow):
         self._refresh_groups()
         self.update_footer()
 
-    # ---------- sections ----------
+    # ---------- sections (tabs) ----------
     def _make_section(self, key, title):
-        wrap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        head.set_margin_top(10)
-        head.set_margin_bottom(2)
-        head.set_margin_start(12)
-        head.set_margin_end(12)
-        lab = Gtk.Label(label=title, xalign=0, hexpand=True)
-        lab.add_css_class("section-title")
-        cnt = Gtk.Label(xalign=1)
-        cnt.add_css_class("dim")
-        head.append(lab)
-        head.append(cnt)
         lb = Gtk.ListBox()
         lb.set_selection_mode(Gtk.SelectionMode.NONE)
-        wrap.append(head)
-        wrap.append(lb)
-        self.sections_box.append(wrap)
-        self.sections[key] = {"box": wrap, "count": cnt, "listbox": lb}
+        sc = Gtk.ScrolledWindow()
+        sc.set_child(lb)
+        sc.set_vexpand(True)
+        page = self.stack.add_titled(sc, key, title)
+        self.sections[key] = {"listbox": lb, "page": page, "title": title}
 
     def _place_row(self, item, row):
         key = STATUS_SECTION.get(item.status, "queued")
@@ -624,13 +611,9 @@ class MainWindow(Gtk.ApplicationWindow):
         return n
 
     def _update_sections(self):
-        total = 0
         for s in self.sections.values():
             n = self._count_rows(s["listbox"])
-            s["box"].set_visible(n > 0)
-            s["count"].set_text(str(n) if n else "")
-            total += n
-        self.empty_label.set_visible(total == 0)
+            s["page"].set_title(f"{s['title']} ({n})" if n else s["title"])
 
     def update_footer(self):
         self._update_sections()
