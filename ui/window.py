@@ -11,20 +11,21 @@ from gi.repository import GLib, Gtk, Pango
 
 from core import ytdlp
 from core.downloader import DownloadManager, fetch_async
-from core.models import DownloadItem, STATUS_LABELS
+from core.i18n import t
+from core.models import DownloadItem
 from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, SettingsDialog
 
 VERSION = ytdlp.ytdlp_version()
 
 SECTION_DEFS = [
-    ("home", "الرئيسية"),
-    ("groups", "قوائم التشغيل"),
-    ("downloading", "جارٍ التحميل الآن"),
-    ("queued", "في الانتظار"),
-    ("paused", "موقوفة مؤقتاً"),
-    ("done", "مكتملة"),
-    ("error", "فاشلة"),
-    ("cancelled", "ملغاة"),
+    ("home", "tab.home"),
+    ("groups", "tab.groups"),
+    ("downloading", "tab.downloading"),
+    ("queued", "tab.queued"),
+    ("paused", "tab.paused"),
+    ("done", "tab.done"),
+    ("error", "tab.error"),
+    ("cancelled", "tab.cancelled"),
 ]
 
 STATUS_SECTION = {
@@ -65,20 +66,20 @@ class GroupRow(Gtk.ListBoxRow):
         self.count.add_css_class("dim")
         box.append(self.count)
 
-        btn_fmt = Gtk.Button(label="الصيغة…")
+        btn_fmt = Gtk.Button(label=t("btn.format"))
         btn_fmt.connect("clicked", lambda b: win.choose_group_format(gid))
         box.append(btn_fmt)
 
-        btn_stop = Gtk.Button(label="إيقاف الكل")
+        btn_stop = Gtk.Button(label=t("btn.pause_all"))
         btn_stop.connect("clicked", lambda b: win.pause_group(gid))
         box.append(btn_stop)
 
-        btn_all = Gtk.Button(label="تحميل الكل")
+        btn_all = Gtk.Button(label=t("btn.download_all"))
         btn_all.add_css_class("suggested-action")
         btn_all.connect("clicked", lambda b: win.download_group(gid))
         box.append(btn_all)
 
-        btn_rm = Gtk.Button(label="إزالة")
+        btn_rm = Gtk.Button(label=t("btn.remove"))
         btn_rm.connect("clicked", lambda b: win.remove_group(gid))
         box.append(btn_rm)
 
@@ -87,16 +88,16 @@ class GroupRow(Gtk.ListBoxRow):
 
     def set_title(self, title, count):
         self.total = count
-        self.label.set_text(f"قائمة تشغيل: {title}")
+        self.label.set_text(t("group.title", title=title))
         self.label.set_tooltip_text(title)
-        self.count.set_text(f"{count} عنصر")
+        self.count.set_text(t("group.count", n=count))
 
     def set_progress(self, done, total, active):
-        parts = [f"{total} عنصر"]
+        parts = [t("group.count", n=total)]
         if done:
-            parts.append(f"{done}/{total} مكتمل")
+            parts.append(t("group.progress_done", done=done, total=total))
         if active:
-            parts.append(f"{active} قيد التحميل")
+            parts.append(t("group.progress_active", active=active))
         self.count.set_text(" • ".join(parts))
 
 
@@ -155,13 +156,13 @@ class DownloadRow(Gtk.ListBoxRow):
         self.title.set_text(it.title or it.url)
         self.title.set_tooltip_text(it.title)
 
-        chunks = [STATUS_LABELS.get(it.status, it.status)]
+        chunks = [t(f"status.{it.status.lower()}") if it.status else it.status]
         if it.status in ("DOWNLOADING", "PROCESSING"):
             chunks.append(f"{it.progress * 100:.1f}%")
             if it.speed:
                 chunks.append(it.speed)
             if it.eta:
-                chunks.append(f"متبقٍ {it.eta}")
+                chunks.append(t("row.remaining", eta=it.eta))
         elif it.status == "DONE":
             if it.filepath:
                 chunks.append(os.path.basename(it.filepath))
@@ -186,29 +187,29 @@ class DownloadRow(Gtk.ListBoxRow):
         if it.status == "NEW":
             pass
         elif it.status in ("QUEUED", "DOWNLOADING", "PROCESSING"):
-            self.actions.append(self._button("إيقاف", lambda b: w.pause_item(it)))
-            self.actions.append(self._button("إلغاء", lambda b: w.cancel_item(it)))
+            self.actions.append(self._button(t("btn.stop"), lambda b: w.pause_item(it)))
+            self.actions.append(self._button(t("btn.cancel"), lambda b: w.cancel_item(it)))
         elif it.status == "PAUSED":
-            self.actions.append(self._button("متابعة", lambda b: w.retry_item(it), "suggested-action"))
-            self.actions.append(self._button("إلغاء", lambda b: w.cancel_item(it)))
+            self.actions.append(self._button(t("btn.resume"), lambda b: w.retry_item(it), "suggested-action"))
+            self.actions.append(self._button(t("btn.cancel"), lambda b: w.cancel_item(it)))
         elif it.status == "READY":
-            self.actions.append(self._button("تنزيل", lambda b: w.quick_download(it), "suggested-action"))
-            self.actions.append(self._button("الصيغة…", lambda b: w.choose_format(it)))
-            self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
+            self.actions.append(self._button(t("btn.download"), lambda b: w.quick_download(it), "suggested-action"))
+            self.actions.append(self._button(t("btn.format"), lambda b: w.choose_format(it)))
+            self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
-            self.actions.append(self._button("فتح الملف", lambda b: w.open_file(it)))
-            self.actions.append(self._button("فتح المجلد", lambda b: w.open_folder(it)))
-            self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
+            self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_file(it)))
+            self.actions.append(self._button(t("btn.open_folder"), lambda b: w.open_folder(it)))
+            self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status in ("ERROR", "CANCELLED"):
-            self.actions.append(self._button("إعادة المحاولة", lambda b: w.retry_item(it), "suggested-action"))
-            self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
+            self.actions.append(self._button(t("btn.retry"), lambda b: w.retry_item(it), "suggested-action"))
+            self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         else:
-            self.actions.append(self._button("إزالة", lambda b: w.remove_item(it)))
+            self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
 
 
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="YTDLnis Linux")
+        super().__init__(application=app, title=t("app.name"))
         try:
             self.set_icon_name("org.galmod.ytdlnis.linux")
         except Exception:
@@ -232,17 +233,17 @@ class MainWindow(Gtk.ApplicationWindow):
             title_box.append(logo)
         except Exception:
             pass
-        title_lab = Gtk.Label(label="YTDLnis Linux")
+        title_lab = Gtk.Label(label=t("app.name"))
         title_lab.add_css_class("dl-title")
         title_box.append(title_lab)
         hb.set_title_widget(title_box)
 
-        settings_btn = Gtk.Button(label="الإعدادات")
+        settings_btn = Gtk.Button(label=t("header.settings"))
         settings_btn.connect("clicked", self.open_settings)
         hb.pack_end(settings_btn)
 
-        folder_btn = Gtk.Button(label="فتح المجلد")
-        folder_btn.set_tooltip_text("فتح مجلد التحميلات في مدير الملفات")
+        folder_btn = Gtk.Button(label=t("header.open_folder"))
+        folder_btn.set_tooltip_text(t("header.open_folder_tip"))
         folder_btn.connect("clicked", self._open_download_dir)
         hb.pack_start(folder_btn)
 
@@ -258,11 +259,11 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.entry = Gtk.Entry()
         self.entry.set_hexpand(True)
-        self.entry.set_placeholder_text("الصق رابطاً أو أكثر (كل رابط في سطر) أو اكتب بحثاً…")
+        self.entry.set_placeholder_text(t("entry.placeholder"))
         self.entry.connect("activate", self._on_add)
         top.append(self.entry)
 
-        add_btn = Gtk.Button(label="إضافة")
+        add_btn = Gtk.Button(label=t("btn.add"))
         add_btn.add_css_class("suggested-action")
         add_btn.connect("clicked", self._on_add)
         top.append(add_btn)
@@ -284,8 +285,8 @@ class MainWindow(Gtk.ApplicationWindow):
         root.append(self.stack)
 
         self.sections = {}
-        for key, title in SECTION_DEFS:
-            self._make_section(key, title)
+        for key, title_key in SECTION_DEFS:
+            self._make_section(key, title_key)
         self.stack.set_visible_child_name("home")
 
         self.footer = Gtk.Label(label="", xalign=0)
@@ -354,15 +355,15 @@ class MainWindow(Gtk.ApplicationWindow):
             entries = payload.get("entries") or []
             if not entries:
                 item.status = "ERROR"
-                item.error = "قائمة التشغيل فارغة أو غير متاحة"
+                item.error = t("err.playlist_empty")
                 self.refresh(item)
                 return
             self._drop_item(item.id)
             self._gid += 1
             gid = self._gid
-            grow = GroupRow(self, gid, payload.get("title") or "قائمة تشغيل", 0)
+            title_g = payload.get("title") or t("group.title", title="").split(":")[0]
+            grow = GroupRow(self, gid, title_g, 0)
             self.sections["groups"]["listbox"].append(grow)
-            title_g = payload.get("title") or "قائمة تشغيل"
             self.groups[gid] = {
                 "items": [],
                 "row": grow,
@@ -383,7 +384,7 @@ class MainWindow(Gtk.ApplicationWindow):
                 child.gid = gid
                 self.groups[gid]["items"].append(child)
                 count += 1
-            grow.set_title(payload.get("title") or "قائمة تشغيل", count)
+            grow.set_title(title_g, count)
             self.update_footer()
             return
         ytdlp.apply_video_info(item, payload)
@@ -421,7 +422,7 @@ class MainWindow(Gtk.ApplicationWindow):
             return
         if kind == "playlist":
             item.status = "ERROR"
-            item.error = "هذا العنصر قائمة تشغيل — أضف روابطه مباشرة"
+            item.error = t("err.playlist_item")
             self.refresh(item)
             return
         ytdlp.apply_video_info(item, payload)
@@ -493,7 +494,7 @@ class MainWindow(Gtk.ApplicationWindow):
         def chosen(mode, selector, af):
             self._apply_group_format(gid, mode, selector, af)
 
-        PlaylistFormatDialog(self, g.get("title") or "قائمة تشغيل", chosen).present()
+        PlaylistFormatDialog(self, g.get("title") or "", chosen).present()
 
     def _apply_group_format(self, gid, mode, selector, af):
         g = self.groups.get(gid)
@@ -538,39 +539,23 @@ class MainWindow(Gtk.ApplicationWindow):
         if item.filepath and os.path.exists(item.filepath):
             subprocess.Popen(["xdg-open", item.filepath])
         else:
-            self.footer.set_text(
-                "الملف غير موجود — ربما نُقل أو حُذف من مجلد التحميل"
-            )
+            self.footer.set_text(t("err.file_missing"))
 
     def _open_download_dir(self, _b):
         os.makedirs(self.settings["download_dir"], exist_ok=True)
         subprocess.Popen(["xdg-open", self.settings["download_dir"]])
 
-    def _change_download_dir(self, _b):
-        def chosen(path):
-            self.settings["download_dir"] = path
-            try:
-                self.settings.save()
-            except OSError as exc:
-                self.footer.set_text(f"تعذّر حفظ المسار: {exc}")
-                return
-            self.update_footer()
-            self.footer.set_text(f"✓ المسار الجديد: {path}")
-            self.footer.set_tooltip_text(path)
-            GLib.timeout_add_seconds(4, lambda: (self.update_footer(), False)[1])
-
-        FolderPickerDialog(
-            self, self.settings["download_dir"], chosen
-        ).present()
-
     def open_settings(self, _b):
-        def saved():
+        def saved(lang_changed=False):
             self.manager.pump()
             self.update_footer()
-            self.footer.set_text(
-                f"✓ حُفظت الإعدادات — الحفظ في: {self.settings['download_dir']}"
-            )
-            GLib.timeout_add_seconds(4, lambda: (self.update_footer(), False)[1])
+            if lang_changed:
+                self.footer.set_text(t("msg.restart"))
+            else:
+                self.footer.set_text(
+                    t("footer.saved", path=self.settings["download_dir"])
+                )
+            GLib.timeout_add_seconds(5, lambda: (self.update_footer(), False)[1])
 
         SettingsDialog(self, self.settings, saved).present()
 
@@ -587,14 +572,14 @@ class MainWindow(Gtk.ApplicationWindow):
         self.update_footer()
 
     # ---------- sections (tabs) ----------
-    def _make_section(self, key, title):
+    def _make_section(self, key, title_key):
         lb = Gtk.ListBox()
         lb.set_selection_mode(Gtk.SelectionMode.NONE)
         sc = Gtk.ScrolledWindow()
         sc.set_child(lb)
         sc.set_vexpand(True)
-        page = self.stack.add_titled(sc, key, title)
-        self.sections[key] = {"listbox": lb, "page": page, "title": title}
+        page = self.stack.add_titled(sc, key, t(title_key))
+        self.sections[key] = {"listbox": lb, "page": page, "title_key": title_key}
 
     def _place_row(self, item, row):
         key = STATUS_SECTION.get(item.status, "queued")
@@ -616,7 +601,8 @@ class MainWindow(Gtk.ApplicationWindow):
     def _update_sections(self):
         for s in self.sections.values():
             n = self._count_rows(s["listbox"])
-            s["page"].set_title(f"{s['title']} ({n})" if n else s["title"])
+            title = t(s["title_key"])
+            s["page"].set_title(f"{title} ({n})" if n else title)
 
     def update_footer(self):
         self._update_sections()
@@ -626,10 +612,15 @@ class MainWindow(Gtk.ApplicationWindow):
             if it.status in ("DOWNLOADING", "PROCESSING", "QUEUED")
         )
         done = sum(1 for it in self.items.values() if it.status == "DONE")
-        self.footer.set_text(
-            f"yt-dlp {VERSION} • {running} قيد التحميل • {done} مكتمل • {len(self.items)} عنصر"
-            f" • الحفظ في: {os.path.basename(self.settings['download_dir'].rstrip('/')) or self.settings['download_dir']}"
-        )
+        folder = os.path.basename(self.settings["download_dir"].rstrip("/")) or self.settings["download_dir"]
+        parts = [
+            f"yt-dlp {VERSION}",
+            t("footer.running", n=running),
+            t("footer.done", n=done),
+            t("footer.items", n=len(self.items)),
+            t("footer.saving_to", path=folder),
+        ]
+        self.footer.set_text(" • ".join(parts))
         self.footer.set_tooltip_text(self.settings["download_dir"])
 
     def _on_close(self, _w):

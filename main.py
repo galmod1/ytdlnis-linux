@@ -9,6 +9,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gtk
 
+from core.i18n import set_language
 from core.settings import Settings
 from ui.window import MainWindow
 
@@ -19,6 +20,7 @@ class App(Gtk.Application):
     def __init__(self, app_id="org.galmod.ytdlnis.linux"):
         super().__init__(application_id=app_id)
         self.settings = Settings()
+        set_language(self.settings.get("language", "ar"))
         self.window = None
 
     def do_startup(self):

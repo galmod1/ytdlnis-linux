@@ -25,6 +25,7 @@ DEFAULTS = {
     "aria2c_connections": 4,
     "concurrent_fragments": 4,
     "speed_limit_kb": 0,
+    "language": "ar",
 }
 
 

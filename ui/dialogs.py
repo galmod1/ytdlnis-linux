@@ -7,9 +7,18 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
-from core.models import human_size, STATUS_LABELS
+from core.i18n import LANGUAGE_NAMES, set_language, t
+from core.models import human_size
 
-COOKIES_CHOICES = ["بدون", "firefox", "chrome", "chromium", "brave", "edge"]
+COOKIES_VALUES = ["", "firefox", "chrome", "chromium", "brave", "edge"]
+
+PRESET_VALUES = ["best", "video_1080", "video_720", "audio_mp3", "audio_m4a"]
+PRESET_KEYS = ["presets.best", "presets.1080", "presets.720", "presets.mp3", "presets.m4a"]
+
+ENGINE_VALUES = ["", "aria2c"]
+ENGINE_KEYS = ["engine.internal", "engine.aria2c"]
+
+LANG_VALUES = ["ar", "en", "fr"]
 
 
 def _row(label, widget, tooltip=None):
@@ -26,8 +35,8 @@ def _row(label, widget, tooltip=None):
 
 class SettingsDialog(Gtk.Window):
     def __init__(self, parent, settings, on_saved):
-        super().__init__(title="الإعدادات", modal=True, transient_for=parent)
-        self.set_default_size(560, 660)
+        super().__init__(title=t("settings.title"), modal=True, transient_for=parent)
+        self.set_default_size(560, 700)
         self.settings = settings
         self.on_saved = on_saved
 
@@ -37,98 +46,100 @@ class SettingsDialog(Gtk.Window):
         box.set_margin_start(16)
         box.set_margin_end(16)
 
+        self.lang_dd = Gtk.DropDown.new_from_strings(
+            [LANGUAGE_NAMES[code] for code in LANG_VALUES]
+        )
+        lang = settings.get("language", "ar")
+        self.lang_dd.set_selected(LANG_VALUES.index(lang) if lang in LANG_VALUES else 0)
+        box.append(_row(t("settings.language"), self.lang_dd))
+
         self.folder_entry = Gtk.Entry(text=settings["download_dir"])
-        folder_btn = Gtk.Button(label="اختر…")
+        folder_btn = Gtk.Button(label=t("settings.choose"))
         folder_btn.connect("clicked", self._pick_folder)
         folder_box = Gtk.Box(spacing=8)
         folder_box.append(self.folder_entry)
         folder_box.append(folder_btn)
         self.folder_entry.set_hexpand(True)
-        box.append(_row("مجلد التحميل", folder_box))
+        box.append(_row(t("settings.folder"), folder_box))
 
         self.template_entry = Gtk.Entry(text=settings["filename_template"])
-        box.append(_row("قالب اسم الملف", self.template_entry,
-                        "مثال: %(title)s [%(id)s].%(ext)s"))
+        box.append(_row(t("settings.template"), self.template_entry,
+                        t("settings.template_tip")))
 
         self.conc_spin = Gtk.SpinButton.new_with_range(1, 8, 1)
         self.conc_spin.set_value(int(settings["concurrent_downloads"]))
-        box.append(_row("تحميلات متزامنة", self.conc_spin))
+        box.append(_row(t("settings.concurrent"), self.conc_spin))
 
         self.speed_spin = Gtk.SpinButton.new_with_range(0, 1000000, 100)
         self.speed_spin.set_value(int(settings["speed_limit_kb"]))
-        box.append(_row("حدّ السرعة (KB/ث)", self.speed_spin,
-                        "0 = بلا حد. مثال: 500 تعني نصف ميجابايت/ثانية"))
+        box.append(_row(t("settings.speed"), self.speed_spin,
+                        t("settings.speed_tip")))
 
-        self.quick_check = Gtk.CheckButton(label="التحميل الفوري (بلا انتظار اختيار الصيغة)")
+        self.quick_check = Gtk.CheckButton(label=t("settings.quick"))
         self.quick_check.set_active(bool(settings["quick_mode"]))
         box.append(self.quick_check)
 
-        preset_dd = Gtk.DropDown.new_from_strings(
-            ["أفضل جودة", "1080p كحد أقصى", "720p كحد أقصى", "صوت MP3", "صوت M4A"]
-        )
-        presets = ["best", "video_1080", "video_720", "audio_mp3", "audio_m4a"]
-        if settings["format_preset"] in presets:
-            preset_dd.set_selected(presets.index(settings["format_preset"]))
+        preset_dd = Gtk.DropDown.new_from_strings([t(k) for k in PRESET_KEYS])
+        if settings["format_preset"] in PRESET_VALUES:
+            preset_dd.set_selected(PRESET_VALUES.index(settings["format_preset"]))
         self.preset_dd = preset_dd
-        self.presets = presets
-        box.append(_row("الصيغة الافتراضية", preset_dd))
+        box.append(_row(t("settings.default_format"), preset_dd))
 
         box.append(Gtk.Separator())
 
-        self.engine_dd = Gtk.DropDown.new_from_strings(
-            ["yt-dlp الداخلي", "aria2c (عدة اتصالات لكل ملف)"]
-        )
-        engines = ["", "aria2c"]
-        if settings["external_downloader"] in engines:
-            self.engine_dd.set_selected(engines.index(settings["external_downloader"]))
-        self.engines = engines
-        box.append(_row("محرّك التحميل", self.engine_dd,
-                        "aria2c يسرّع الملف الواحد على عدة اتصالات"))
+        self.engine_dd = Gtk.DropDown.new_from_strings([t(k) for k in ENGINE_KEYS])
+        if settings["external_downloader"] in ENGINE_VALUES:
+            self.engine_dd.set_selected(ENGINE_VALUES.index(settings["external_downloader"]))
+        box.append(_row(t("settings.engine"), self.engine_dd,
+                        t("settings.engine_tip")))
 
         self.conn_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
         self.conn_spin.set_value(int(settings["aria2c_connections"]))
-        box.append(_row("اتصالات aria2c لكل ملف", self.conn_spin))
+        box.append(_row(t("settings.conns"), self.conn_spin))
 
         self.frag_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
         self.frag_spin.set_value(int(settings["concurrent_fragments"]))
-        box.append(_row("أجزاء متزامنة (HLS)", self.frag_spin,
-                        "لتسريع البث المقطّع"))
+        box.append(_row(t("settings.frags"), self.frag_spin,
+                        t("settings.frags_tip")))
 
         box.append(Gtk.Separator())
 
-        self.thumb_check = Gtk.CheckButton(label="تضمين الصورة المصغّرة")
+        self.thumb_check = Gtk.CheckButton(label=t("settings.embed_thumb"))
         self.thumb_check.set_active(bool(settings["embed_thumbnail"]))
         box.append(self.thumb_check)
 
-        self.meta_check = Gtk.CheckButton(label="تضمين البيانات الوصفية (العنوان، الفنان، التاريخ)")
+        self.meta_check = Gtk.CheckButton(label=t("settings.embed_meta"))
         self.meta_check.set_active(bool(settings["embed_metadata"]))
         box.append(self.meta_check)
 
-        self.subs_check = Gtk.CheckButton(label="تنزيل الترجمة وتضمينها")
+        self.subs_check = Gtk.CheckButton(label=t("settings.subs"))
         self.subs_check.set_active(bool(settings["write_subs"]))
         box.append(self.subs_check)
 
         self.sub_langs = Gtk.Entry(text=settings["sub_langs"])
-        box.append(_row("لغات الترجمة", self.sub_langs, "مثال: en,ar أو all"))
+        box.append(_row(t("settings.sub_langs"), self.sub_langs,
+                        t("settings.sub_langs_tip")))
 
-        self.sb_check = Gtk.CheckButton(label="إزالة مقاطع SponsorBlock (الرعاية والإعلانات)")
+        self.sb_check = Gtk.CheckButton(label=t("settings.sb"))
         self.sb_check.set_active(bool(settings["sponsorblock"]))
         box.append(self.sb_check)
 
         box.append(Gtk.Separator())
 
-        self.cookies_dd = Gtk.DropDown.new_from_strings(COOKIES_CHOICES)
+        self.cookie_labels = [t("cookies.none")] + COOKIES_VALUES[1:]
+        self.cookies_dd = Gtk.DropDown.new_from_strings(self.cookie_labels)
         ck = settings["cookies_from_browser"] or ""
-        self.cookies_dd.set_selected(COOKIES_CHOICES.index(ck) if ck in COOKIES_CHOICES else 0)
-        box.append(_row("كوكيز المتصفح", self.cookies_dd,
-                        "لتجاوز قيود العمر أو الدخول أو الجودة العالية"))
+        self.cookies_dd.set_selected(COOKIES_VALUES.index(ck) if ck in COOKIES_VALUES else 0)
+        box.append(_row(t("settings.cookies"), self.cookies_dd,
+                        t("settings.cookies_tip")))
 
         self.proxy_entry = Gtk.Entry(text=settings["proxy"])
-        box.append(_row("بروكسي", self.proxy_entry, "مثال: socks5://127.0.0.1:9050"))
+        box.append(_row(t("settings.proxy"), self.proxy_entry,
+                        t("settings.proxy_tip")))
 
         self.extra_entry = Gtk.Entry(text=settings["extra_args"])
-        box.append(_row("وسائط yt-dlp إضافية", self.extra_entry,
-                        "تكتب هنا أي خيار متقدم من yt-dlp"))
+        box.append(_row(t("settings.extra"), self.extra_entry,
+                        t("settings.extra_tip")))
 
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(box)
@@ -138,12 +149,6 @@ class SettingsDialog(Gtk.Window):
         root.append(scrolled)
         root.append(Gtk.Separator())
 
-        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        actions.set_margin_top(10)
-        actions.set_margin_bottom(10)
-        actions.set_margin_start(12)
-        actions.set_margin_end(12)
-
         self.note = Gtk.Label(label="", xalign=0)
         self.note.set_wrap(True)
         self.note.add_css_class("dim")
@@ -151,8 +156,14 @@ class SettingsDialog(Gtk.Window):
         self.note.set_margin_end(12)
         root.append(self.note)
 
-        back_btn = Gtk.Button(label="استعادة الافتراضي")
-        back_btn.set_tooltip_text("إرجاع كل الحقول إلى قيم المصنع — ثم اضغط «حفظ التغييرات» لتثبيتها")
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        back_btn = Gtk.Button(label=t("settings.restore"))
+        back_btn.set_tooltip_text(t("settings.restore_tip"))
         back_btn.connect("clicked", self._restore_defaults)
         actions.append(back_btn)
 
@@ -160,7 +171,7 @@ class SettingsDialog(Gtk.Window):
         spacer.set_hexpand(True)
         actions.append(spacer)
 
-        save_btn = Gtk.Button(label="حفظ التغييرات")
+        save_btn = Gtk.Button(label=t("settings.save"))
         save_btn.add_css_class("suggested-action")
         save_btn.connect("clicked", self._on_save)
         actions.append(save_btn)
@@ -172,13 +183,14 @@ class SettingsDialog(Gtk.Window):
         from core.settings import DEFAULTS
 
         d = DEFAULTS
+        self.lang_dd.set_selected(LANG_VALUES.index(d["language"]))
         self.folder_entry.set_text(d["download_dir"])
         self.template_entry.set_text(d["filename_template"])
         self.conc_spin.set_value(int(d["concurrent_downloads"]))
         self.speed_spin.set_value(int(d["speed_limit_kb"]))
         self.quick_check.set_active(bool(d["quick_mode"]))
-        self.preset_dd.set_selected(self.presets.index(d["format_preset"]))
-        self.engine_dd.set_selected(self.engines.index(d["external_downloader"]))
+        self.preset_dd.set_selected(PRESET_VALUES.index(d["format_preset"]))
+        self.engine_dd.set_selected(ENGINE_VALUES.index(d["external_downloader"]))
         self.conn_spin.set_value(int(d["aria2c_connections"]))
         self.frag_spin.set_value(int(d["concurrent_fragments"]))
         self.thumb_check.set_active(bool(d["embed_thumbnail"]))
@@ -186,15 +198,10 @@ class SettingsDialog(Gtk.Window):
         self.subs_check.set_active(bool(d["write_subs"]))
         self.sub_langs.set_text(d["sub_langs"])
         self.sb_check.set_active(bool(d["sponsorblock"]))
-        ck = d["cookies_from_browser"] or "بدون"
-        self.cookies_dd.set_selected(
-            COOKIES_CHOICES.index(ck) if ck in COOKIES_CHOICES else 0
-        )
+        self.cookies_dd.set_selected(0)
         self.proxy_entry.set_text(d["proxy"])
         self.extra_entry.set_text(d["extra_args"])
-        self.note.set_text(
-            "✓ استُعيدت القيم الافتراضية في الحقول — اضغط «حفظ التغييرات» لتثبيتها، أو أغلق النافذة للتجاهل."
-        )
+        self.note.set_text(t("settings.restore_note"))
 
     def _pick_folder(self, _btn):
         current = self.folder_entry.get_text().strip() or os.path.expanduser("~")
@@ -220,32 +227,39 @@ class SettingsDialog(Gtk.Window):
         try:
             os.makedirs(new_dir, exist_ok=True)
         except OSError as exc:
-            self._alert(f"تعذّر إنشاء مجلد الحفظ:\n{new_dir}\n{exc}")
+            self._alert(t("err.dir_create", path=new_dir, error=exc))
             return
+
+        old_lang = s.get("language", "ar")
         s["download_dir"] = new_dir
         s["filename_template"] = self.template_entry.get_text().strip() or s["filename_template"]
         s["concurrent_downloads"] = int(self.conc_spin.get_value())
         s["speed_limit_kb"] = int(self.speed_spin.get_value())
         s["quick_mode"] = self.quick_check.get_active()
-        s["format_preset"] = self.presets[self.preset_dd.get_selected()]
+        s["format_preset"] = PRESET_VALUES[self.preset_dd.get_selected()]
         s["embed_thumbnail"] = self.thumb_check.get_active()
         s["embed_metadata"] = self.meta_check.get_active()
         s["write_subs"] = self.subs_check.get_active()
         s["sub_langs"] = self.sub_langs.get_text().strip() or "en"
         s["sponsorblock"] = self.sb_check.get_active()
-        s["external_downloader"] = self.engines[self.engine_dd.get_selected()]
+        s["external_downloader"] = ENGINE_VALUES[self.engine_dd.get_selected()]
         s["aria2c_connections"] = int(self.conn_spin.get_value())
         s["concurrent_fragments"] = int(self.frag_spin.get_value())
-        ck = COOKIES_CHOICES[self.cookies_dd.get_selected()]
-        s["cookies_from_browser"] = "" if ck == "بدون" else ck
+        ck = COOKIES_VALUES[self.cookies_dd.get_selected()]
+        s["cookies_from_browser"] = ck
         s["proxy"] = self.proxy_entry.get_text().strip()
         s["extra_args"] = self.extra_entry.get_text().strip()
+        s["language"] = LANG_VALUES[self.lang_dd.get_selected()]
         try:
             s.save()
         except OSError as exc:
-            self._alert(f"تعذّر حفظ ملف الإعدادات:\n{exc}")
+            self._alert(t("err.save_config", error=exc))
             return
-        self.on_saved()
+
+        lang_changed = s["language"] != old_lang
+        if lang_changed:
+            set_language(s["language"])
+        self.on_saved(lang_changed)
         self.destroy()
 
 
@@ -253,7 +267,9 @@ class FormatDialog(Gtk.Window):
     """Choose an exact format for a single item."""
 
     def __init__(self, parent, item, on_choose):
-        super().__init__(title=f"الصيغة — {item.title[:60]}", modal=True, transient_for=parent)
+        super().__init__(
+            title=t("fmt.title", title=item.title[:60]), modal=True, transient_for=parent
+        )
         self.set_default_size(600, 700)
         self.item = item
         self.on_choose = on_choose
@@ -266,7 +282,7 @@ class FormatDialog(Gtk.Window):
         def add(label, payload, subtitle=None):
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             lab = Gtk.Label(label=label, xalign=0)
-            lab.set_ellipsize(3)  # Pango.EllipsizeMode.END fallback number
+            lab.set_ellipsize(3)
             box.append(lab)
             if subtitle:
                 sub = Gtk.Label(label=subtitle, xalign=0)
@@ -277,15 +293,14 @@ class FormatDialog(Gtk.Window):
             row.payload = payload
             listbox.append(row)
 
-        add("⭐ أفضل جودة — فيديو + صوت", ("video", "bestvideo*+bestaudio/best", "mp3"),
-            "يختار أعلى دقة وأفضل صوت ثم يدمجهما mp4")
-        add("🎬 أفضل جودة بحد 1080p", ("video", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp3"))
-        add("🎬 أفضل جودة بحد 720p", ("video", "bestvideo[height<=720]+bestaudio/best[height<=720]", "mp3"))
-        add("🎵 صوت فقط — MP3", ("audio", "", "mp3"), "أفضل جودة صوت متاحة")
-        add("🎵 صوت فقط — M4A", ("audio", "", "m4a"))
+        add(t("fmt.best"), ("video", "bestvideo*+bestaudio/best", "mp3"), t("fmt.best_sub"))
+        add(t("fmt.1080"), ("video", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp3"))
+        add(t("fmt.720"), ("video", "bestvideo[height<=720]+bestaudio/best[height<=720]", "mp3"))
+        add(t("fmt.mp3"), ("audio", "", "mp3"), t("fmt.mp3_sub"))
+        add(t("fmt.m4a"), ("audio", "", "m4a"))
 
         sep_row = Gtk.ListBoxRow()
-        sep_lab = Gtk.Label(label="— التنسيقات المتاحة —", xalign=0.5)
+        sep_lab = Gtk.Label(label=t("fmt.available"), xalign=0.5)
         sep_lab.add_css_class("dim")
         sep_lab.set_margin_top(8)
         sep_lab.set_margin_bottom(4)
@@ -310,12 +325,12 @@ class FormatDialog(Gtk.Window):
                 bits.append(human_size(f["size"]))
             if f["tbr"]:
                 bits.append(f"{int(f['tbr'])}k")
-            label = "فيديو • " + " • ".join(bits)
+            label = t("fmt.video_prefix") + " • ".join(bits)
             if f["has_audio"]:
-                add(label, ("video", f["format_id"], "mp3"), "صورة وصوت معاً في نفس الملف")
+                add(label, ("video", f["format_id"], "mp3"), t("fmt.video_both"))
             else:
                 add(label, ("video", f"{f['format_id']}+bestaudio", "mp3"),
-                    "فيديو فقط — سيُضاف أفضل صوت ثم يُدمجان")
+                    t("fmt.video_merge"))
         for f in auds:
             bits = []
             if f["abr"]:
@@ -323,9 +338,9 @@ class FormatDialog(Gtk.Window):
             bits += [f["ext"]]
             if f["size"]:
                 bits.append(human_size(f["size"]))
-            add("صوت • " + " • ".join(bits),
+            add(t("fmt.audio_prefix") + " • ".join(bits),
                 ("video", f"{f['format_id']}+bestaudio/best", "mp3"),
-                "سيُضاف أفضل فيديو ويُدمجان — للصوت المحض اختر MP3")
+                t("fmt.audio_sub"))
 
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(listbox)
@@ -339,14 +354,15 @@ class FormatDialog(Gtk.Window):
             self.destroy()
 
 
-PLAYLIST_PRESETS = [
-    ("أفضل جودة — فيديو + صوت", ("video", "bestvideo*+bestaudio/best", "mp3")),
-    ("أفضل جودة بحد 1080p", ("video", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp3")),
-    ("أفضل جودة بحد 720p", ("video", "bestvideo[height<=720]+bestaudio/best[height<=720]", "mp3")),
-    ("أفضل جودة بحد 480p", ("video", "bestvideo[height<=480]+bestaudio/best[height<=480]", "mp3")),
-    ("صوت فقط — MP3", ("audio", "", "mp3")),
-    ("صوت فقط — M4A", ("audio", "", "m4a")),
-]
+def playlist_presets():
+    return [
+        (t("presets.best"), ("video", "bestvideo*+bestaudio/best", "mp3")),
+        (t("presets.1080"), ("video", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp3")),
+        (t("presets.720"), ("video", "bestvideo[height<=720]+bestaudio/best[height<=720]", "mp3")),
+        (t("presets.480"), ("video", "bestvideo[height<=480]+bestaudio/best[height<=480]", "mp3")),
+        (t("presets.mp3"), ("audio", "", "mp3")),
+        (t("presets.m4a"), ("audio", "", "m4a")),
+    ]
 
 
 class PlaylistFormatDialog(Gtk.Window):
@@ -354,7 +370,7 @@ class PlaylistFormatDialog(Gtk.Window):
 
     def __init__(self, parent, title, on_choose):
         super().__init__(
-            title=f"صيغة القائمة — {title[:50]}", modal=True, transient_for=parent
+            title=t("plfmt.title", title=title[:50]), modal=True, transient_for=parent
         )
         self.set_default_size(500, 460)
 
@@ -364,10 +380,7 @@ class PlaylistFormatDialog(Gtk.Window):
         box.set_margin_start(12)
         box.set_margin_end(12)
 
-        note = Gtk.Label(
-            label="سيُطبَّق الاختيار على كل عناصر القائمة، ويبدأ تحميلها مباشرة.",
-            xalign=0,
-        )
+        note = Gtk.Label(label=t("plfmt.note"), xalign=0)
         note.set_wrap(True)
         note.add_css_class("dim")
         box.append(note)
@@ -375,7 +388,7 @@ class PlaylistFormatDialog(Gtk.Window):
         lb = Gtk.ListBox()
         lb.set_selection_mode(Gtk.SelectionMode.NONE)
         lb.add_css_class("boxed-list")
-        for label, payload in PLAYLIST_PRESETS:
+        for label, payload in playlist_presets():
             row = Gtk.ListBoxRow()
             lab = Gtk.Label(label=label, xalign=0)
             lab.set_margin_top(10)
@@ -404,7 +417,7 @@ class FolderPickerDialog(Gtk.Window):
     """Self-contained folder browser (no xdg portal needed)."""
 
     def __init__(self, parent, start_path, on_choose):
-        super().__init__(title="اختر مجلد التحميل", modal=True, transient_for=parent)
+        super().__init__(title=t("folder.title"), modal=True, transient_for=parent)
         self.set_default_size(660, 600)
         self.on_choose = on_choose
         self.current = (
@@ -422,7 +435,7 @@ class FolderPickerDialog(Gtk.Window):
         self.path_entry.set_hexpand(True)
         self.path_entry.connect("activate", self._go_typed)
         path_box.append(self.path_entry)
-        go_btn = Gtk.Button(label="انتقال")
+        go_btn = Gtk.Button(label=t("folder.go"))
         go_btn.connect("clicked", self._go_typed)
         path_box.append(go_btn)
         box.append(path_box)
@@ -450,7 +463,7 @@ class FolderPickerDialog(Gtk.Window):
         actions.set_margin_start(12)
         actions.set_margin_end(12)
 
-        cancel_btn = Gtk.Button(label="إلغاء")
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
         cancel_btn.connect("clicked", lambda b: self.destroy())
         actions.append(cancel_btn)
 
@@ -458,7 +471,7 @@ class FolderPickerDialog(Gtk.Window):
         spacer.set_hexpand(True)
         actions.append(spacer)
 
-        choose_btn = Gtk.Button(label="اختيار هذا المجلد")
+        choose_btn = Gtk.Button(label=t("folder.choose"))
         choose_btn.add_css_class("suggested-action")
         choose_btn.connect("clicked", self._choose)
         actions.append(choose_btn)
@@ -488,7 +501,7 @@ class FolderPickerDialog(Gtk.Window):
         self.path_entry.set_text(self.current)
         parent = os.path.dirname(self.current)
         if parent and parent != self.current:
-            self._add_row("⬆ المجلد الأعلى", parent)
+            self._add_row(t("folder.up"), parent)
 
         try:
             entries = [
@@ -497,16 +510,16 @@ class FolderPickerDialog(Gtk.Window):
                 if e.is_dir() and not e.name.startswith(".")
             ]
         except OSError as exc:
-            self.message.set_text(f"لا يمكن فتح هذا المجلد: {exc}")
+            self.message.set_text(t("folder.unreadable", error=exc))
             return
 
         entries.sort(key=lambda e: e.name.casefold())
         for e in entries:
             self._add_row(f"📁 {e.name}", e.path)
         if entries:
-            self.message.set_text(f"{len(entries)} مجلد فرعي")
+            self.message.set_text(t("folder.subdirs", n=len(entries)))
         else:
-            self.message.set_text("لا مجلدات فرعية هنا — اضغط «اختيار هذا المجلد»")
+            self.message.set_text(t("folder.empty"))
 
     def _go(self, path):
         path = os.path.abspath(os.path.expanduser(path))
@@ -514,7 +527,7 @@ class FolderPickerDialog(Gtk.Window):
             self.current = path
             self._reload()
         else:
-            self.message.set_text("المسار غير موجود")
+            self.message.set_text(t("folder.not_found"))
 
     def _go_typed(self, _b):
         self._go(self.path_entry.get_text().strip())

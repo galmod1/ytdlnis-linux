@@ -4,18 +4,6 @@ import time
 
 _ids = itertools.count(1)
 
-STATUS_LABELS = {
-    "NEW": "جارٍ جلب المعلومات…",
-    "READY": "جاهز — اختر الصيغة",
-    "QUEUED": "في الانتظار…",
-    "DOWNLOADING": "جارٍ التنزيل…",
-    "PROCESSING": "جارٍ المعالجة…",
-    "PAUSED": "متوقف مؤقتاً",
-    "DONE": "تم التحميل",
-    "ERROR": "فشل",
-    "CANCELLED": "أُلغي",
-}
-
 
 class DownloadItem:
     def __init__(self, url):
