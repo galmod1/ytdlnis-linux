@@ -54,6 +54,11 @@ class SettingsDialog(Gtk.Window):
         self.conc_spin.set_value(int(settings["concurrent_downloads"]))
         box.append(_row("تحميلات متزامنة", self.conc_spin))
 
+        self.speed_spin = Gtk.SpinButton.new_with_range(0, 1000000, 100)
+        self.speed_spin.set_value(int(settings["speed_limit_kb"]))
+        box.append(_row("حدّ السرعة (KB/ث)", self.speed_spin,
+                        "0 = بلا حد. مثال: 500 تعني نصف ميجابايت/ثانية"))
+
         self.quick_check = Gtk.CheckButton(label="التحميل الفوري (بلا انتظار اختيار الصيغة)")
         self.quick_check.set_active(bool(settings["quick_mode"]))
         box.append(self.quick_check)
@@ -170,6 +175,7 @@ class SettingsDialog(Gtk.Window):
         self.folder_entry.set_text(d["download_dir"])
         self.template_entry.set_text(d["filename_template"])
         self.conc_spin.set_value(int(d["concurrent_downloads"]))
+        self.speed_spin.set_value(int(d["speed_limit_kb"]))
         self.quick_check.set_active(bool(d["quick_mode"]))
         self.preset_dd.set_selected(self.presets.index(d["format_preset"]))
         self.engine_dd.set_selected(self.engines.index(d["external_downloader"]))
@@ -219,6 +225,7 @@ class SettingsDialog(Gtk.Window):
         s["download_dir"] = new_dir
         s["filename_template"] = self.template_entry.get_text().strip() or s["filename_template"]
         s["concurrent_downloads"] = int(self.conc_spin.get_value())
+        s["speed_limit_kb"] = int(self.speed_spin.get_value())
         s["quick_mode"] = self.quick_check.get_active()
         s["format_preset"] = self.presets[self.preset_dd.get_selected()]
         s["embed_thumbnail"] = self.thumb_check.get_active()

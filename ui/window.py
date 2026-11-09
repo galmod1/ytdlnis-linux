@@ -16,6 +16,30 @@ from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, S
 
 VERSION = ytdlp.ytdlp_version()
 
+SECTION_DEFS = [
+    ("groups", "قوائم التشغيل"),
+    ("downloading", "جارٍ التحميل الآن"),
+    ("queued", "في الانتظار"),
+    ("ready", "جاهزة للتحميل"),
+    ("paused", "موقوفة مؤقتاً"),
+    ("done", "مكتملة"),
+    ("error", "فاشلة"),
+    ("cancelled", "ملغاة"),
+    ("new", "قيد جلب المعلومات"),
+]
+
+STATUS_SECTION = {
+    "NEW": "new",
+    "READY": "ready",
+    "QUEUED": "queued",
+    "DOWNLOADING": "downloading",
+    "PROCESSING": "downloading",
+    "PAUSED": "paused",
+    "DONE": "done",
+    "ERROR": "error",
+    "CANCELLED": "cancelled",
+}
+
 
 class GroupRow(Gtk.ListBoxRow):
     """Header row for an expanded playlist."""
@@ -252,10 +276,22 @@ class MainWindow(Gtk.ApplicationWindow):
         sep = Gtk.Separator()
         root.append(sep)
 
-        self.listbox = Gtk.ListBox()
-        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.sections_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.sections = {}
+        for key, title in SECTION_DEFS:
+            self._make_section(key, title)
+
+        self.empty_label = Gtk.Label(
+            label="لا تحميلات بعد — الصق رابطاً في الأعلى أو اكتب بحثاً.",
+            xalign=0,
+        )
+        self.empty_label.add_css_class("dim")
+        self.empty_label.set_margin_top(24)
+        self.empty_label.set_margin_start(12)
+        self.sections_box.append(self.empty_label)
+
         scrolled = Gtk.ScrolledWindow()
-        scrolled.set_child(self.listbox)
+        scrolled.set_child(self.sections_box)
         scrolled.set_vexpand(True)
         root.append(scrolled)
 
@@ -298,7 +334,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.items[item.id] = item
         row = DownloadRow(item, self)
         self.rows[item.id] = row
-        self.listbox.append(row)
+        self._place_row(item, row)
         self.update_footer()
         if entry_mode:
             if self.settings["quick_mode"]:
@@ -332,7 +368,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self._gid += 1
             gid = self._gid
             grow = GroupRow(self, gid, payload.get("title") or "قائمة تشغيل", 0)
-            self.listbox.append(grow)
+            self.sections["groups"]["listbox"].append(grow)
             title_g = payload.get("title") or "قائمة تشغيل"
             self.groups[gid] = {
                 "items": [],
@@ -423,7 +459,9 @@ class MainWindow(Gtk.ApplicationWindow):
     def _drop_item(self, item_id):
         row = self.rows.pop(item_id, None)
         if row is not None:
-            self.listbox.remove(row)
+            parent = row.get_parent()
+            if parent is not None:
+                parent.remove(row)
         self.items.pop(item_id, None)
         self.update_footer()
 
@@ -479,7 +517,9 @@ class MainWindow(Gtk.ApplicationWindow):
             return
         for it in list(g["items"]):
             self.remove_item(it)
-        self.listbox.remove(g["row"])
+        parent = g["row"].get_parent()
+        if parent is not None:
+            parent.remove(g["row"])
         self.update_footer()
 
     def _refresh_groups(self):
@@ -538,13 +578,62 @@ class MainWindow(Gtk.ApplicationWindow):
         row = self.rows.get(item.id)
         if row is not None:
             row.refresh()
+            self._place_row(item, row)
 
     def on_item_update(self, item):
         self.refresh(item)
         self._refresh_groups()
         self.update_footer()
 
+    # ---------- sections ----------
+    def _make_section(self, key, title):
+        wrap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        head.set_margin_top(10)
+        head.set_margin_bottom(2)
+        head.set_margin_start(12)
+        head.set_margin_end(12)
+        lab = Gtk.Label(label=title, xalign=0, hexpand=True)
+        lab.add_css_class("section-title")
+        cnt = Gtk.Label(xalign=1)
+        cnt.add_css_class("dim")
+        head.append(lab)
+        head.append(cnt)
+        lb = Gtk.ListBox()
+        lb.set_selection_mode(Gtk.SelectionMode.NONE)
+        wrap.append(head)
+        wrap.append(lb)
+        self.sections_box.append(wrap)
+        self.sections[key] = {"box": wrap, "count": cnt, "listbox": lb}
+
+    def _place_row(self, item, row):
+        key = STATUS_SECTION.get(item.status, "queued")
+        target = self.sections[key]["listbox"]
+        if row.get_parent() is not target:
+            parent = row.get_parent()
+            if parent is not None:
+                parent.remove(row)
+            target.append(row)
+
+    def _count_rows(self, lb):
+        n = 0
+        child = lb.get_first_child()
+        while child is not None:
+            n += 1
+            child = child.get_next_sibling()
+        return n
+
+    def _update_sections(self):
+        total = 0
+        for s in self.sections.values():
+            n = self._count_rows(s["listbox"])
+            s["box"].set_visible(n > 0)
+            s["count"].set_text(str(n) if n else "")
+            total += n
+        self.empty_label.set_visible(total == 0)
+
     def update_footer(self):
+        self._update_sections()
         running = sum(
             1
             for it in self.items.values()

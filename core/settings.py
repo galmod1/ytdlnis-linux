@@ -24,6 +24,7 @@ DEFAULTS = {
     "external_downloader": "",  # "" | "aria2c"
     "aria2c_connections": 4,
     "concurrent_fragments": 4,
+    "speed_limit_kb": 0,
 }
 
 

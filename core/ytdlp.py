@@ -141,16 +141,25 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         ]
     else:
         out += ["-f", selector or "bestvideo*+bestaudio/best", "--merge-output-format", "mp4/mkv"]
+    try:
+        limit_kb = int(settings.get("speed_limit_kb") or 0)
+    except Exception:
+        limit_kb = 0
+    if limit_kb > 0:
+        out += ["--limit-rate", f"{limit_kb}K"]
     if settings.get("external_downloader") == "aria2c" and shutil.which("aria2c"):
         try:
             conns = str(int(settings.get("aria2c_connections") or 4))
         except Exception:
             conns = "4"
+        aria_args = f"aria2c:-x {conns} -s {conns} -k 1M"
+        if limit_kb > 0:
+            aria_args += f" --max-overall-download-limit={limit_kb}K"
         out += [
             "--downloader",
             "aria2c",
             "--downloader-args",
-            f"aria2c:-x {conns} -s {conns} -k 1M",
+            aria_args,
         ]
     try:
         frags = int(settings.get("concurrent_fragments") or 1)
