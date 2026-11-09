@@ -1,0 +1,46 @@
+# YTDLnis Linux — full-featured audio/video downloader for Linux, inspired by
+# YTDLnis (Android, https://github.com/deniscerri/ytdlnis) — GPL-3.0.
+import os
+import sys
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, Gtk
+
+from core.settings import Settings
+from ui.window import MainWindow
+
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+
+
+class App(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.galmod.ytdlnis.linux")
+        self.settings = Settings()
+        self.window = None
+
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
+        provider = Gtk.CssProvider()
+        provider.load_from_path(os.path.join(ASSETS, "style.css"))
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+    def do_activate(self):
+        if self.window is None:
+            self.window = MainWindow(self)
+        self.window.present()
+
+
+def main():
+    app = App()
+    return app.run(sys.argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,25 @@
+/* YTDLnis Linux — GPL-3.0 */
+.dim {
+  opacity: 0.62;
+  font-size: 0.9em;
+}
+.dl-title {
+  font-weight: 700;
+}
+.dl-row {
+  border-bottom: 1px solid alpha(currentColor, 0.08);
+}
+progressbar {
+  min-height: 6px;
+}
+progressbar trough {
+  min-height: 6px;
+  border-radius: 3px;
+}
+progressbar progress {
+  min-height: 6px;
+  border-radius: 3px;
+}
+list.boxed-list row {
+  padding: 6px 10px;
+}
