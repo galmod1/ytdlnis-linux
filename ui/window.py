@@ -241,11 +241,6 @@ class MainWindow(Gtk.ApplicationWindow):
         settings_btn.connect("clicked", self.open_settings)
         hb.pack_end(settings_btn)
 
-        path_btn = Gtk.Button(label="تغيير المسار…")
-        path_btn.set_tooltip_text("اختيار مجلد حفظ التحميلات")
-        path_btn.connect("clicked", self._change_download_dir)
-        hb.pack_start(path_btn)
-
         folder_btn = Gtk.Button(label="فتح المجلد")
         folder_btn.set_tooltip_text("فتح مجلد التحميلات في مدير الملفات")
         folder_btn.connect("clicked", self._open_download_dir)
