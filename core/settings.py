@@ -42,3 +42,25 @@ class Settings(dict):
         CONFIG_FILE.write_text(
             json.dumps(self, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+        try:
+            import datetime
+
+            keys = (
+                "download_dir",
+                "concurrent_downloads",
+                "external_downloader",
+                "aria2c_connections",
+                "concurrent_fragments",
+                "format_preset",
+                "quick_mode",
+            )
+            line = (
+                datetime.datetime.now().isoformat(timespec="seconds")
+                + " "
+                + json.dumps({k: self[k] for k in keys}, ensure_ascii=False)
+                + "\n"
+            )
+            with open(CONFIG_DIR / "save.log", "a", encoding="utf-8") as f:
+                f.write(line)
+        except OSError:
+            pass

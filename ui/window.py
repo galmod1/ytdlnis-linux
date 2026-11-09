@@ -12,7 +12,7 @@ from gi.repository import GLib, Gtk, Pango
 from core import ytdlp
 from core.downloader import DownloadManager, fetch_async
 from core.models import DownloadItem, STATUS_LABELS
-from ui.dialogs import FormatDialog, PlaylistFormatDialog, SettingsDialog
+from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, SettingsDialog
 
 VERSION = ytdlp.ytdlp_version()
 
@@ -217,7 +217,13 @@ class MainWindow(Gtk.ApplicationWindow):
         settings_btn.connect("clicked", self.open_settings)
         hb.pack_end(settings_btn)
 
-        folder_btn = Gtk.Button(label="مجلد التحميل")
+        path_btn = Gtk.Button(label="تغيير المسار…")
+        path_btn.set_tooltip_text("اختيار مجلد حفظ التحميلات")
+        path_btn.connect("clicked", self._change_download_dir)
+        hb.pack_start(path_btn)
+
+        folder_btn = Gtk.Button(label="فتح المجلد")
+        folder_btn.set_tooltip_text("فتح مجلد التحميلات في مدير الملفات")
         folder_btn.connect("clicked", self._open_download_dir)
         hb.pack_start(folder_btn)
 
@@ -498,6 +504,23 @@ class MainWindow(Gtk.ApplicationWindow):
     def _open_download_dir(self, _b):
         os.makedirs(self.settings["download_dir"], exist_ok=True)
         subprocess.Popen(["xdg-open", self.settings["download_dir"]])
+
+    def _change_download_dir(self, _b):
+        def chosen(path):
+            self.settings["download_dir"] = path
+            try:
+                self.settings.save()
+            except OSError as exc:
+                self.footer.set_text(f"تعذّر حفظ المسار: {exc}")
+                return
+            self.update_footer()
+            self.footer.set_text(f"✓ المسار الجديد: {path}")
+            self.footer.set_tooltip_text(path)
+            GLib.timeout_add_seconds(4, lambda: (self.update_footer(), False)[1])
+
+        FolderPickerDialog(
+            self, self.settings["download_dir"], chosen
+        ).present()
 
     def open_settings(self, _b):
         def saved():

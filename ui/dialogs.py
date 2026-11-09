@@ -177,34 +177,6 @@ class SettingsDialog(Gtk.Window):
         except Exception:
             print("SETTINGS ERROR:", message)
 
-    def _log_save(self, s):
-        try:
-            import datetime
-            import json
-
-            from core.settings import CONFIG_DIR
-
-            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            keys = (
-                "download_dir",
-                "concurrent_downloads",
-                "external_downloader",
-                "aria2c_connections",
-                "concurrent_fragments",
-                "format_preset",
-                "quick_mode",
-            )
-            line = (
-                datetime.datetime.now().isoformat(timespec="seconds")
-                + " "
-                + json.dumps({k: s[k] for k in keys}, ensure_ascii=False)
-                + "\n"
-            )
-            with open(CONFIG_DIR / "save.log", "a", encoding="utf-8") as f:
-                f.write(line)
-        except OSError:
-            pass
-
     def _on_save(self, _btn):
         s = self.settings
         new_dir = self.folder_entry.get_text().strip() or s["download_dir"]
