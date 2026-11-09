@@ -16,8 +16,8 @@ ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 
 class App(Gtk.Application):
-    def __init__(self):
-        super().__init__(application_id="org.galmod.ytdlnis.linux")
+    def __init__(self, app_id="org.galmod.ytdlnis.linux"):
+        super().__init__(application_id=app_id)
         self.settings = Settings()
         self.window = None
 

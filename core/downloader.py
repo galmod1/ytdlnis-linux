@@ -43,6 +43,10 @@ class DownloadManager:
             item = self.queue.pop(0)
             self._start(item)
 
+    def pump(self):
+        """Public: apply a changed concurrency limit immediately."""
+        self._pump()
+
     # ---------- process ----------
     def _start(self, item):
         if not item.url:

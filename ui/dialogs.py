@@ -77,6 +77,27 @@ class SettingsDialog(Gtk.Window):
 
         box.append(Gtk.Separator())
 
+        self.engine_dd = Gtk.DropDown.new_from_strings(
+            ["yt-dlp الداخلي", "aria2c (عدة اتصالات لكل ملف)"]
+        )
+        engines = ["", "aria2c"]
+        if settings["external_downloader"] in engines:
+            self.engine_dd.set_selected(engines.index(settings["external_downloader"]))
+        self.engines = engines
+        box.append(_row("محرّك التحميل", self.engine_dd,
+                        "aria2c يسرّع الملف الواحد على عدة اتصالات"))
+
+        self.conn_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
+        self.conn_spin.set_value(int(settings["aria2c_connections"]))
+        box.append(_row("اتصالات aria2c لكل ملف", self.conn_spin))
+
+        self.frag_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
+        self.frag_spin.set_value(int(settings["concurrent_fragments"]))
+        box.append(_row("أجزاء متزامنة (HLS)", self.frag_spin,
+                        "لتسريع البث المقطّع"))
+
+        box.append(Gtk.Separator())
+
         self.thumb_check = Gtk.CheckButton(label="تضمين الصورة المصغّرة")
         self.thumb_check.set_active(bool(settings["embed_thumbnail"]))
         box.append(self.thumb_check)
@@ -117,17 +138,10 @@ class SettingsDialog(Gtk.Window):
         self.set_child(scrolled)
 
     def _pick_folder(self, _btn):
-        dialog = Gtk.FileDialog(title="اختر مجلد التحميل")
-
-        def done(dlg, result):
-            try:
-                folder = dlg.select_folder_finish(result)
-            except Exception:
-                return
-            if folder and folder.get_path():
-                self.folder_entry.set_text(folder.get_path())
-
-        dialog.select_folder(self, None, done)
+        current = self.folder_entry.get_text().strip() or os.path.expanduser("~")
+        FolderPickerDialog(
+            self, current, lambda path: self.folder_entry.set_text(path)
+        ).present()
 
     def _on_save(self, _btn):
         s = self.settings
@@ -141,6 +155,9 @@ class SettingsDialog(Gtk.Window):
         s["write_subs"] = self.subs_check.get_active()
         s["sub_langs"] = self.sub_langs.get_text().strip() or "en"
         s["sponsorblock"] = self.sb_check.get_active()
+        s["external_downloader"] = self.engines[self.engine_dd.get_selected()]
+        s["aria2c_connections"] = int(self.conn_spin.get_value())
+        s["concurrent_fragments"] = int(self.frag_spin.get_value())
         ck = COOKIES_CHOICES[self.cookies_dd.get_selected()]
         s["cookies_from_browser"] = "" if ck == "بدون" else ck
         s["proxy"] = self.proxy_entry.get_text().strip()
@@ -305,3 +322,115 @@ class PlaylistFormatDialog(Gtk.Window):
         if payload:
             on_choose(*payload)
             self.destroy()
+
+
+class FolderPickerDialog(Gtk.Window):
+    """Self-contained folder browser (no xdg portal needed)."""
+
+    def __init__(self, parent, start_path, on_choose):
+        super().__init__(title="اختر مجلد التحميل", modal=True, transient_for=parent)
+        self.set_default_size(660, 560)
+        self.on_choose = on_choose
+        self.current = (
+            start_path if start_path and os.path.isdir(start_path) else os.path.expanduser("~")
+        )
+
+        hb = Gtk.HeaderBar()
+        self.set_titlebar(hb)
+        choose_btn = Gtk.Button(label="اختيار هذا المجلد")
+        choose_btn.add_css_class("suggested-action")
+        choose_btn.connect("clicked", self._choose)
+        hb.pack_end(choose_btn)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(12)
+        box.set_margin_bottom(12)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+
+        path_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.path_entry = Gtk.Entry()
+        self.path_entry.set_hexpand(True)
+        self.path_entry.connect("activate", self._go_typed)
+        path_box.append(self.path_entry)
+        go_btn = Gtk.Button(label="انتقال")
+        go_btn.connect("clicked", self._go_typed)
+        path_box.append(go_btn)
+        box.append(path_box)
+
+        self.listbox = Gtk.ListBox()
+        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.listbox.connect("row-activated", self._activated)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(self.listbox)
+        scrolled.set_vexpand(True)
+        box.append(scrolled)
+
+        self.message = Gtk.Label(label="", xalign=0)
+        self.message.add_css_class("dim")
+        self.message.set_wrap(True)
+        box.append(self.message)
+
+        self.set_child(box)
+        self._reload()
+
+    def _add_row(self, label, payload):
+        row = Gtk.ListBoxRow()
+        lab = Gtk.Label(label=label, xalign=0)
+        lab.set_margin_top(8)
+        lab.set_margin_bottom(8)
+        lab.set_margin_start(6)
+        lab.set_margin_end(6)
+        row.set_child(lab)
+        row.payload = payload
+        self.listbox.append(row)
+
+    def _reload(self):
+        child = self.listbox.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            self.listbox.remove(child)
+            child = nxt
+
+        self.path_entry.set_text(self.current)
+        parent = os.path.dirname(self.current)
+        if parent and parent != self.current:
+            self._add_row("⬆ المجلد الأعلى", parent)
+
+        try:
+            entries = [
+                e
+                for e in os.scandir(self.current)
+                if e.is_dir() and not e.name.startswith(".")
+            ]
+        except OSError as exc:
+            self.message.set_text(f"لا يمكن فتح هذا المجلد: {exc}")
+            return
+
+        entries.sort(key=lambda e: e.name.casefold())
+        for e in entries:
+            self._add_row(f"📁 {e.name}", e.path)
+        if entries:
+            self.message.set_text(f"{len(entries)} مجلد فرعي")
+        else:
+            self.message.set_text("لا مجلدات فرعية هنا — اضغط «اختيار هذا المجلد»")
+
+    def _go(self, path):
+        path = os.path.abspath(os.path.expanduser(path))
+        if os.path.isdir(path):
+            self.current = path
+            self._reload()
+        else:
+            self.message.set_text("المسار غير موجود")
+
+    def _go_typed(self, _b):
+        self._go(self.path_entry.get_text().strip())
+
+    def _activated(self, _lb, row):
+        payload = getattr(row, "payload", None)
+        if payload:
+            self._go(payload)
+
+    def _choose(self, _b):
+        self.on_choose(self.current)
+        self.destroy()

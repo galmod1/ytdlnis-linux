@@ -501,6 +501,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def open_settings(self, _b):
         def saved():
+            self.manager.pump()
             self.update_footer()
 
         SettingsDialog(self, self.settings, saved).present()
@@ -525,7 +526,9 @@ class MainWindow(Gtk.ApplicationWindow):
         done = sum(1 for it in self.items.values() if it.status == "DONE")
         self.footer.set_text(
             f"yt-dlp {VERSION} • {running} قيد التحميل • {done} مكتمل • {len(self.items)} عنصر"
+            f" • الحفظ في: {os.path.basename(self.settings['download_dir'].rstrip('/')) or self.settings['download_dir']}"
         )
+        self.footer.set_tooltip_text(self.settings["download_dir"])
 
     def _on_close(self, _w):
         for it in list(self.items.values()):
