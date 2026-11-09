@@ -28,6 +28,7 @@ def _run_json(url, flat=False, timeout=90, extra=None):
         cmd.append("--flat-playlist")
     if extra:
         cmd.extend(extra)
+    cmd.append("--")
     cmd.append(url)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if proc.returncode != 0:
@@ -172,5 +173,6 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
             out += shlex.split(settings["extra_args"])
         except ValueError:
             pass
+    out.append("--")
     out.append(url)
     return out

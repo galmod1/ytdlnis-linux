@@ -181,6 +181,7 @@ class DownloadManager:
 # ---------- async info fetching ----------
 def fetch_async(url, extra, callback):
     """Fetch yt-dlp info in a thread; callback(kind, payload, error) on main loop."""
+    _FETCH_SEM.acquire()
 
     def worker():
         kind = payload = err = None
@@ -188,6 +189,8 @@ def fetch_async(url, extra, callback):
             kind, payload = ytdlp.fetch_info(url, extra=extra)
         except Exception as exc:
             err = str(exc) or exc.__class__.__name__
+        finally:
+            _FETCH_SEM.release()
 
         def deliver():
             callback(kind, payload, err)
@@ -196,3 +199,6 @@ def fetch_async(url, extra, callback):
         GLib.idle_add(deliver)
 
     threading.Thread(target=worker, daemon=True).start()
+
+
+_FETCH_SEM = threading.BoundedSemaphore(3)

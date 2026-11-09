@@ -2,6 +2,7 @@
 """Main window and download rows."""
 import os
 import subprocess
+from urllib.parse import urlparse
 
 import gi
 
@@ -312,11 +313,19 @@ class MainWindow(Gtk.ApplicationWindow):
             line = line.strip()
             if not line:
                 continue
-            if "://" in line or line.startswith("www."):
-                url = line if "://" in line else f"https://{line}"
-                self.add_url(url)
-            else:
-                self.add_url(f"ytsearch1:{line}")
+            looks_url = "://" in line or line.lower().startswith("www.")
+            if looks_url:
+                candidate = line if "://" in line else f"https://{line}"
+                parsed = urlparse(candidate)
+                if (
+                    parsed.scheme in ("http", "https")
+                    and parsed.netloc
+                    and " " not in candidate
+                    and "\n" not in candidate
+                ):
+                    self.add_url(candidate)
+                    continue
+            self.add_url(f"ytsearch1:{line}")
 
     def add_url(self, url, title=None, duration=None, entry_mode=False):
         item = DownloadItem(url)

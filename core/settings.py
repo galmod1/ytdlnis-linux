@@ -41,10 +41,14 @@ class Settings(dict):
             pass
 
     def save(self):
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        CONFIG_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
         CONFIG_FILE.write_text(
             json.dumps(self, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+        try:
+            os.chmod(CONFIG_FILE, 0o600)
+        except OSError:
+            pass
         try:
             import datetime
 
@@ -65,5 +69,9 @@ class Settings(dict):
             )
             with open(CONFIG_DIR / "save.log", "a", encoding="utf-8") as f:
                 f.write(line)
+            try:
+                os.chmod(CONFIG_DIR / "save.log", 0o600)
+            except OSError:
+                pass
         except OSError:
             pass
