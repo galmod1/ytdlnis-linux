@@ -36,6 +36,7 @@ class DownloadItem:
         self.mode = "video"       # video | audio
         self.selector = ""        # yt-dlp -f selector
         self.audio_format = "mp3"
+        self.gid = None           # playlist group id, when part of one
         self.process = None
         self.cancelled = False
         self.started_at = 0.0

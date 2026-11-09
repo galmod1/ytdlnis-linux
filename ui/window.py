@@ -12,7 +12,7 @@ from gi.repository import GLib, Gtk, Pango
 from core import ytdlp
 from core.downloader import DownloadManager, fetch_async
 from core.models import DownloadItem, STATUS_LABELS
-from ui.dialogs import FormatDialog, SettingsDialog
+from ui.dialogs import FormatDialog, PlaylistFormatDialog, SettingsDialog
 
 VERSION = ytdlp.ytdlp_version()
 
@@ -41,6 +41,14 @@ class GroupRow(Gtk.ListBoxRow):
         self.count = Gtk.Label(xalign=1)
         self.count.add_css_class("dim")
         box.append(self.count)
+
+        btn_fmt = Gtk.Button(label="الصيغة…")
+        btn_fmt.connect("clicked", lambda b: win.choose_group_format(gid))
+        box.append(btn_fmt)
+
+        btn_stop = Gtk.Button(label="إيقاف الكل")
+        btn_stop.connect("clicked", lambda b: win.pause_group(gid))
+        box.append(btn_stop)
 
         btn_all = Gtk.Button(label="تحميل الكل")
         btn_all.add_css_class("suggested-action")
@@ -319,7 +327,13 @@ class MainWindow(Gtk.ApplicationWindow):
             gid = self._gid
             grow = GroupRow(self, gid, payload.get("title") or "قائمة تشغيل", 0)
             self.listbox.append(grow)
-            self.groups[gid] = {"items": [], "row": grow}
+            title_g = payload.get("title") or "قائمة تشغيل"
+            self.groups[gid] = {
+                "items": [],
+                "row": grow,
+                "title": title_g,
+                "format": None,
+            }
             count = 0
             for e in entries:
                 u = ytdlp.entry_url(e)
@@ -331,6 +345,7 @@ class MainWindow(Gtk.ApplicationWindow):
                     duration=e.get("duration"),
                     entry_mode=True,
                 )
+                child.gid = gid
                 self.groups[gid]["items"].append(child)
                 count += 1
             grow.set_title(payload.get("title") or "قائمة تشغيل", count)
@@ -346,7 +361,11 @@ class MainWindow(Gtk.ApplicationWindow):
     def quick_download(self, item):
         from core.ytdlp import resolve_selector
 
-        mode, selector, af = resolve_selector(self.settings["format_preset"])
+        g = self.groups.get(item.gid) if item.gid else None
+        if g and g.get("format"):
+            mode, selector, af = g["format"]
+        else:
+            mode, selector, af = resolve_selector(self.settings["format_preset"])
         if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
             return
         self.manager.enqueue(item, mode, selector, af)
@@ -407,9 +426,46 @@ class MainWindow(Gtk.ApplicationWindow):
         g = self.groups.get(gid)
         if not g:
             return
+        mode, selector, af = self._group_format(g)
         for it in g["items"]:
-            if it.status == "READY":
-                self.quick_download(it)
+            if it.status in ("READY", "PAUSED", "CANCELLED"):
+                self.manager.enqueue(it, mode, selector, af)
+
+    def pause_group(self, gid):
+        g = self.groups.get(gid)
+        if not g:
+            return
+        for it in g["items"]:
+            if it.status in ("DOWNLOADING", "PROCESSING"):
+                self.manager.pause(it)
+            elif it.status == "QUEUED":
+                self.manager.cancel(it)
+
+    def _group_format(self, g):
+        if g.get("format"):
+            return g["format"]
+        from core.ytdlp import resolve_selector
+
+        return resolve_selector(self.settings["format_preset"])
+
+    def choose_group_format(self, gid):
+        g = self.groups.get(gid)
+        if not g:
+            return
+
+        def chosen(mode, selector, af):
+            self._apply_group_format(gid, mode, selector, af)
+
+        PlaylistFormatDialog(self, g.get("title") or "قائمة تشغيل", chosen).present()
+
+    def _apply_group_format(self, gid, mode, selector, af):
+        g = self.groups.get(gid)
+        if not g:
+            return
+        g["format"] = (mode, selector, af)
+        for it in g["items"]:
+            if it.status in ("READY", "PAUSED", "CANCELLED"):
+                self.manager.enqueue(it, mode, selector, af)
 
     def remove_group(self, gid):
         g = self.groups.pop(gid, None)

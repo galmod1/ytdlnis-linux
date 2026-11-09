@@ -241,3 +241,67 @@ class FormatDialog(Gtk.Window):
         if payload:
             self.on_choose(*payload)
             self.destroy()
+
+
+PLAYLIST_PRESETS = [
+    ("أفضل جودة — فيديو + صوت", ("video", "bestvideo*+bestaudio/best", "mp3")),
+    ("أفضل جودة بحد 1080p", ("video", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp3")),
+    ("أفضل جودة بحد 720p", ("video", "bestvideo[height<=720]+bestaudio/best[height<=720]", "mp3")),
+    ("أفضل جودة بحد 480p", ("video", "bestvideo[height<=480]+bestaudio/best[height<=480]", "mp3")),
+    ("صوت فقط — MP3", ("audio", "", "mp3")),
+    ("صوت فقط — M4A", ("audio", "", "m4a")),
+]
+
+
+class PlaylistFormatDialog(Gtk.Window):
+    """One format choice applied to every item of a playlist."""
+
+    def __init__(self, parent, title, on_choose):
+        super().__init__(
+            title=f"صيغة القائمة — {title[:50]}", modal=True, transient_for=parent
+        )
+        self.set_default_size(500, 460)
+
+        hb = Gtk.HeaderBar()
+        self.set_titlebar(hb)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(12)
+        box.set_margin_bottom(12)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+
+        note = Gtk.Label(
+            label="سيُطبَّق الاختيار على كل عناصر القائمة، ويبدأ تحميلها مباشرة.",
+            xalign=0,
+        )
+        note.set_wrap(True)
+        note.add_css_class("dim")
+        box.append(note)
+
+        lb = Gtk.ListBox()
+        lb.set_selection_mode(Gtk.SelectionMode.NONE)
+        lb.add_css_class("boxed-list")
+        for label, payload in PLAYLIST_PRESETS:
+            row = Gtk.ListBoxRow()
+            lab = Gtk.Label(label=label, xalign=0)
+            lab.set_margin_top(10)
+            lab.set_margin_bottom(10)
+            lab.set_margin_start(8)
+            lab.set_margin_end(8)
+            row.set_child(lab)
+            row.payload = payload
+            lb.append(row)
+        lb.connect("row-activated", lambda _lb, row: self._go(row, on_choose))
+
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(lb)
+        scrolled.set_vexpand(True)
+        box.append(scrolled)
+        self.set_child(box)
+
+    def _go(self, row, on_choose):
+        payload = getattr(row, "payload", None)
+        if payload:
+            on_choose(*payload)
+            self.destroy()
