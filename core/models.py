@@ -5,6 +5,35 @@ import time
 _ids = itertools.count(1)
 
 
+def parse_time(value):
+    """Parse 90, 1:30 or 0:01:30 into seconds; None if invalid."""
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value:
+        return None
+    parts = value.split(":")
+    try:
+        if len(parts) == 1:
+            sec = int(float(parts[0]))
+        elif len(parts) == 2:
+            sec = int(parts[0]) * 60 + int(float(parts[1]))
+        elif len(parts) == 3:
+            sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(float(parts[2]))
+        else:
+            return None
+    except (ValueError, TypeError):
+        return None
+    return sec if sec >= 0 else None
+
+
+def format_time(sec):
+    sec = max(0, int(sec))
+    h, rem = divmod(sec, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
 class DownloadItem:
     def __init__(self, url):
         self.id = next(_ids)
@@ -25,6 +54,9 @@ class DownloadItem:
         self.selector = ""        # yt-dlp -f selector
         self.audio_format = "mp3"
         self.gid = None           # playlist group id, when part of one
+        self.trim_start = ""
+        self.trim_end = ""
+        self.split_chapters = False
         self.process = None
         self.cancelled = False
         self.started_at = 0.0

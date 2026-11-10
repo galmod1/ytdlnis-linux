@@ -21,6 +21,11 @@
   <url type="bugtracker">https://github.com/galmod1/ytdlnis-linux/issues</url>
   <developer_name>Galmod</developer_name>
   <releases>
+    <release version="0.2.0" date="2026-11-09">
+      <description>
+        <p>Trim videos by timestamps and split them by chapters.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-09">
       <description>
         <p>First public release.</p>

@@ -15,7 +15,13 @@ from core.downloader import DownloadManager, fetch_async
 from core.i18n import t
 from core.models import DownloadItem
 from core.version import APP_NAME, APP_VERSION
-from ui.dialogs import FormatDialog, FolderPickerDialog, PlaylistFormatDialog, SettingsDialog
+from ui.dialogs import (
+    FormatDialog,
+    FolderPickerDialog,
+    PlaylistFormatDialog,
+    SettingsDialog,
+    TrimDialog,
+)
 
 VERSION = ytdlp.ytdlp_version()
 
@@ -173,6 +179,11 @@ class DownloadRow(Gtk.ListBoxRow):
             chunks.append(first)
         elif it.duration and it.status != "NEW":
             chunks.append(it.pretty_duration())
+        if it.split_chapters:
+            chunks.append(t("trim.chapters_indicator"))
+        if it.trim_start or it.trim_end:
+            rng = f"{it.trim_start or '0:00'}–{it.trim_end}" if it.trim_end else f"{it.trim_start or '0:00'}→"
+            chunks.append(t("trim.indicator", range=rng))
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
@@ -197,6 +208,7 @@ class DownloadRow(Gtk.ListBoxRow):
         elif it.status == "READY":
             self.actions.append(self._button(t("btn.download"), lambda b: w.quick_download(it), "suggested-action"))
             self.actions.append(self._button(t("btn.format"), lambda b: w.choose_format(it)))
+            self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
             self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_file(it)))
@@ -425,6 +437,11 @@ class MainWindow(Gtk.ApplicationWindow):
             fetch_async(item.url, self._extra(), lambda k, p, e: self._formats_ready(item, k, p, e))
         else:
             self._open_format_dialog(item)
+
+    def choose_trim(self, item):
+        if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
+            return
+        TrimDialog(self, item, lambda: self.refresh(item)).present()
 
     def _formats_ready(self, item, kind, payload, err):
         if err:

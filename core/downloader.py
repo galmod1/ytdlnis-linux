@@ -60,6 +60,9 @@ class DownloadManager:
             mode=item.mode,
             selector=item.selector,
             audio_format=item.audio_format,
+            trim_start=item.trim_start,
+            trim_end=item.trim_end,
+            split_chapters=item.split_chapters,
         )
         item.status = "DOWNLOADING"
         item.progress = 0.0

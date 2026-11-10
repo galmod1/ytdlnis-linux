@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 
-from .models import simplify_formats
+from .models import parse_time, simplify_formats
 
 YTDLP = shutil.which("yt-dlp") or os.path.expanduser("~/.local/bin/yt-dlp")
 FFMPEG = shutil.which("ffmpeg")
@@ -97,7 +97,14 @@ def resolve_selector(preset, item=None):
     return presets.get(preset, presets["best"])
 
 
-def build_download_cmd(url, settings, mode="video", selector="", audio_format="mp3"):
+def build_download_cmd(url, settings, mode="video", selector="", audio_format="mp3",
+                       trim_start="", trim_end="", split_chapters=False):
+    template = settings["filename_template"]
+    if split_chapters:
+        base = template
+        if base.endswith(".%(ext)s"):
+            base = base[: -len(".%(ext)s")]
+        template = base + " - %(section_number)02d %(section_title)s.%(ext)s"
     out = [
         YTDLP,
         "--no-colors",
@@ -106,7 +113,7 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         "-P",
         settings["download_dir"],
         "-o",
-        settings["filename_template"],
+        template,
         "--progress-template",
         "download:PRG %(progress._percent_str)s %(progress._speed_str)s %(progress._eta_str)s",
         "--print",
@@ -132,6 +139,14 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         out += ["--cookies", settings["cookies_file"]]
     elif settings["cookies_from_browser"]:
         out += ["--cookies-from-browser", settings["cookies_from_browser"]]
+    start_sec = parse_time(trim_start)
+    end_sec = parse_time(trim_end)
+    if start_sec is not None or end_sec is not None:
+        start_s = f"{start_sec:02d}" if start_sec is not None else "0"
+        sect = f"*{start_s}-" + (str(end_sec) if end_sec is not None else "")
+        out += ["--download-sections", sect, "--force-keyframes-at-cuts"]
+    if split_chapters:
+        out += ["--split-chapters"]
     if mode == "audio":
         out += [
             "-f",

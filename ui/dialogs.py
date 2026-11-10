@@ -8,7 +8,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
-from core.models import human_size
+from core.models import human_size, parse_time
 from core.theme import THEME_KEYS, THEME_VALUES, apply_theme
 
 COOKIES_VALUES = ["", "firefox", "chrome", "chromium", "brave", "edge"]
@@ -593,6 +593,113 @@ class FolderPickerDialog(Gtk.Window):
 
     def _choose(self, _b):
         self.on_choose(self.current)
+        self.destroy()
+
+
+class TrimDialog(Gtk.Window):
+    """Trim by timestamps and/or split by chapters for one item."""
+
+    def __init__(self, parent, item, on_saved):
+        super().__init__(
+            title=t("trim.title", title=item.title[:50]), modal=True, transient_for=parent
+        )
+        self.set_default_size(540, 460)
+        self.item = item
+        self.on_saved = on_saved
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(14)
+        box.set_margin_bottom(14)
+        box.set_margin_start(14)
+        box.set_margin_end(14)
+
+        self.enable = Gtk.CheckButton(label=t("trim.enable"))
+        self.enable.set_active(bool(item.trim_start or item.trim_end))
+        box.append(self.enable)
+
+        form = Gtk.Grid(column_spacing=10, row_spacing=8)
+        form.set_margin_top(4)
+        start_lab = Gtk.Label(label=t("trim.start"), xalign=0)
+        self.start_entry = Gtk.Entry(text=item.trim_start)
+        self.start_entry.set_placeholder_text("0:00")
+        self.end_entry = Gtk.Entry(text=item.trim_end)
+        self.end_entry.set_placeholder_text("1:30")
+        end_lab = Gtk.Label(label=t("trim.end"), xalign=0)
+        form.attach(start_lab, 0, 0, 1, 1)
+        form.attach(self.start_entry, 1, 0, 1, 1)
+        form.attach(end_lab, 0, 1, 1, 1)
+        form.attach(self.end_entry, 1, 1, 1, 1)
+        box.append(form)
+
+        hint = Gtk.Label(label=t("trim.hint"), xalign=0)
+        hint.set_wrap(True)
+        hint.add_css_class("dim")
+        box.append(hint)
+
+        box.append(Gtk.Separator())
+
+        self.split = Gtk.CheckButton(label=t("trim.split"))
+        self.split.set_active(bool(item.split_chapters))
+        box.append(self.split)
+
+        chapters = (item.info or {}).get("chapters") or []
+        chapter_note = Gtk.Label(
+            label=t("trim.split_note", n=len(chapters)) if chapters else t("trim.split_unknown"),
+            xalign=0,
+        )
+        chapter_note.set_wrap(True)
+        chapter_note.add_css_class("dim")
+        box.append(chapter_note)
+
+        self.note = Gtk.Label(label="", xalign=0)
+        self.note.set_wrap(True)
+        self.note.add_css_class("dim")
+        box.append(self.note)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+
+        save_btn = Gtk.Button(label=t("trim.save"))
+        save_btn.add_css_class("suggested-action")
+        save_btn.connect("clicked", self._save)
+        actions.append(save_btn)
+
+        root.append(actions)
+        self.set_child(root)
+
+    def _save(self, _b):
+        start = self.start_entry.get_text().strip() if self.enable.get_active() else ""
+        end = self.end_entry.get_text().strip() if self.enable.get_active() else ""
+        start_sec = parse_time(start)
+        end_sec = parse_time(end)
+        if start and start_sec is None:
+            self.note.set_text(t("trim.invalid"))
+            return
+        if end and end_sec is None:
+            self.note.set_text(t("trim.invalid"))
+            return
+        if start_sec is not None and end_sec is not None and end_sec <= start_sec:
+            self.note.set_text(t("trim.invalid"))
+            return
+        self.item.trim_start = start
+        self.item.trim_end = end
+        self.item.split_chapters = self.split.get_active()
+        self.on_saved()
         self.destroy()
 
 
