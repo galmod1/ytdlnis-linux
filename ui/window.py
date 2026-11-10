@@ -22,6 +22,7 @@ from ui.dialogs import (
     FolderPickerDialog,
     PlaylistFormatDialog,
     SettingsDialog,
+    ScheduleDialog,
     SubtitleDialog,
     TrimDialog,
     subtitle_codes,
@@ -252,6 +253,13 @@ class DownloadRow(Gtk.ListBoxRow):
         if it.sub_langs:
             key = "sub.indicator_embedded" if it.embed_subs else "sub.indicator"
             chunks.append(t(key, lang=it.sub_langs))
+        if it.schedule_at:
+            chunks.append(
+                t(
+                    "sched.indicator",
+                    when=time.strftime("%Y-%m-%d %H:%M", time.localtime(it.schedule_at)),
+                )
+            )
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
@@ -279,6 +287,7 @@ class DownloadRow(Gtk.ListBoxRow):
             if it.info is None or subtitle_codes(it.info):
                 self.actions.append(self._button(t("btn.subtitle"), lambda b: w.choose_subtitle(it)))
             self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
+            self.actions.append(self._button(t("btn.schedule"), lambda b: w.choose_schedule(it)))
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
             self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_file(it)))
@@ -401,6 +410,12 @@ class MainWindow(Gtk.ApplicationWindow):
         GLib.timeout_add_seconds(1, self._tick)
 
     def _tick(self):
+        now = time.time()
+        for it in list(self.items.values()):
+            if it.schedule_at and it.status == "READY" and now >= it.schedule_at:
+                it.schedule_at = 0.0
+                self.refresh(it)
+                self.quick_download(it)
         for it in list(self.items.values()):
             if it.status in ("DOWNLOADING", "PROCESSING"):
                 self.refresh(it)
@@ -538,7 +553,13 @@ class MainWindow(Gtk.ApplicationWindow):
             mode, selector, af = resolve_selector(self.settings["format_preset"])
         if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
             return
+        item.schedule_at = 0.0
         self.manager.enqueue(item, mode, selector, af)
+
+    def choose_schedule(self, item):
+        if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
+            return
+        ScheduleDialog(self, item, lambda: self.refresh(item)).present()
 
     def choose_format(self, item):
         if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):

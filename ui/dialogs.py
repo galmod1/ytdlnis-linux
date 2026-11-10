@@ -1,11 +1,12 @@
 # GPL-3.0 — inspired by YTDLnis by Denis Çerri.
 """Format picker and settings dialogs (GTK4)."""
 import os
+import time
 
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
 from core.models import human_size, parse_time, format_time
@@ -956,5 +957,112 @@ class SubtitleDialog(Gtk.Window):
             return
         self.item.sub_langs = self.codes[idx - 1]
         self.item.embed_subs = self.embed.get_active()
+        self.on_saved()
+        self.destroy()
+
+
+class ScheduleDialog(Gtk.Window):
+    """Pick a date/time at which the download should start automatically."""
+
+    def __init__(self, parent, item, on_saved):
+        super().__init__(
+            title=t("sched.title", title=item.title[:50]), modal=True, transient_for=parent
+        )
+        self.set_default_size(520, 460)
+        self.item = item
+        self.on_saved = on_saved
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(14)
+        box.set_margin_bottom(14)
+        box.set_margin_start(14)
+        box.set_margin_end(14)
+
+        self.cal = Gtk.Calendar()
+        if item.schedule_at:
+            when = GLib.DateTime.new_from_unix_local(int(item.schedule_at))
+            hour, minute = when.get_hour(), when.get_minute()
+        else:
+            when = GLib.DateTime.new_now_local().add_minutes(10)
+            hour, minute = when.get_hour(), when.get_minute()
+        self.cal.select_day(when)
+        box.append(self.cal)
+
+        time_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        time_row.append(Gtk.Label(label=t("sched.time"), xalign=0))
+        self.hour = Gtk.SpinButton.new_with_range(0, 23, 1)
+        self.hour.set_value(hour)
+        self.minute = Gtk.SpinButton.new_with_range(0, 59, 1)
+        self.minute.set_value(minute)
+        time_row.append(self.hour)
+        time_row.append(Gtk.Label(label=":"))
+        time_row.append(self.minute)
+        box.append(time_row)
+
+        note = Gtk.Label(label=t("sched.note"), xalign=0)
+        note.set_wrap(True)
+        note.add_css_class("dim")
+        box.append(note)
+
+        self.note = Gtk.Label(label="", xalign=0)
+        self.note.set_wrap(True)
+        self.note.add_css_class("dim")
+        box.append(self.note)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+
+        if item.schedule_at:
+            clear_btn = Gtk.Button(label=t("sched.clear"))
+            clear_btn.connect("clicked", self._clear)
+            actions.append(clear_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+
+        save_btn = Gtk.Button(label=t("sched.save"))
+        save_btn.add_css_class("suggested-action")
+        save_btn.connect("clicked", self._save)
+        actions.append(save_btn)
+
+        root.append(actions)
+        self.set_child(root)
+
+    def _save(self, _b):
+        date = self.cal.get_date()
+        epoch = time.mktime(
+            (
+                date.get_year(),
+                date.get_month(),
+                date.get_day_of_month(),
+                int(self.hour.get_value()),
+                int(self.minute.get_value()),
+                0,
+                0,
+                0,
+                -1,
+            )
+        )
+        if epoch <= time.time():
+            self.note.set_text(t("sched.past"))
+            return
+        self.item.schedule_at = epoch
+        self.on_saved()
+        self.destroy()
+
+    def _clear(self, _b):
+        self.item.schedule_at = 0.0
         self.on_saved()
         self.destroy()
