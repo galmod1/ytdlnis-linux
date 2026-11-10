@@ -15,7 +15,7 @@ from gi.repository import Gdk, GLib, Gtk, Pango
 from core import thumbs, ytdlp
 from core.downloader import DownloadManager, fetch_async
 from core.i18n import t
-from core.models import DownloadItem
+from core.models import DownloadItem, pick_thumb
 from core.version import APP_NAME, APP_VERSION
 from ui.dialogs import (
     FormatDialog,
@@ -172,10 +172,23 @@ class DownloadRow(Gtk.ListBoxRow):
     def _on_thumb(self, data):
         if not data:
             return
+        texture = None
         try:
             texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(data))
         except Exception:
-            return
+            texture = None
+        if texture is None:
+            try:
+                import io
+
+                from PIL import Image
+
+                img = Image.open(io.BytesIO(data)).convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=88)
+                texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(buf.getvalue()))
+            except Exception:
+                return
         self.picture.set_paintable(texture)
         self.thumb_stack.set_visible_child_name("pic")
 
@@ -452,7 +465,7 @@ class MainWindow(Gtk.ApplicationWindow):
                     entry_mode=True,
                 )
                 child.gid = gid
-                entry_thumb = thumbs.pick_entry_thumb(e)
+                entry_thumb = pick_thumb(e)
                 if entry_thumb:
                     child.thumb = entry_thumb
                     self.refresh(child)

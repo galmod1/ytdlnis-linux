@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 
-from .models import parse_time, simplify_formats
+from .models import parse_time, pick_thumb, simplify_formats
 
 YTDLP = shutil.which("yt-dlp") or os.path.expanduser("~/.local/bin/yt-dlp")
 FFMPEG = shutil.which("ffmpeg")
@@ -67,7 +67,7 @@ def apply_video_info(item, info):
     item.info = info
     item.title = info.get("title") or item.url
     item.duration = info.get("duration")
-    item.thumb = info.get("thumbnail")
+    item.thumb = pick_thumb(info)
     item.formats = simplify_formats(info)
 
 

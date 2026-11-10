@@ -34,6 +34,21 @@ def format_time(sec):
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
+def pick_thumb(info):
+    """Pick the best raster (jpg/png) thumbnail URL from yt-dlp info/entry."""
+    thumbs = info.get("thumbnails") or []
+    for t in reversed(thumbs):
+        url = (t or {}).get("url") or ""
+        clean = url.lower().split("?")[0]
+        if clean.endswith((".jpg", ".jpeg", ".png")):
+            return url
+    if info.get("thumbnail"):
+        return info["thumbnail"]
+    if thumbs:
+        return (thumbs[-1] or {}).get("url")
+    return None
+
+
 class DownloadItem:
     def __init__(self, url):
         self.id = next(_ids)
