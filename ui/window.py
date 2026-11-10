@@ -35,7 +35,6 @@ VERSION = ytdlp.ytdlp_version()
 
 SECTION_DEFS = [
     ("home", "tab.home"),
-    ("groups", "tab.groups"),
     ("downloading", "tab.downloading"),
     ("queued", "tab.queued"),
     ("paused", "tab.paused"),
@@ -82,6 +81,11 @@ class GroupRow(Gtk.ListBoxRow):
         self.count.add_css_class("dim")
         box.append(self.count)
 
+        self.toggle = Gtk.Button(label="▾")
+        self.toggle.set_tooltip_text(t("group.toggle"))
+        self.toggle.connect("clicked", lambda b: win.toggle_group(gid))
+        box.append(self.toggle)
+
         btn_fmt = Gtk.Button(label=t("btn.format"))
         btn_fmt.connect("clicked", lambda b: win.choose_group_format(gid))
         box.append(btn_fmt)
@@ -107,6 +111,9 @@ class GroupRow(Gtk.ListBoxRow):
         self.label.set_text(t("group.title", title=title))
         self.label.set_tooltip_text(title)
         self.count.set_text(t("group.count", n=count))
+
+    def set_expanded(self, expanded):
+        self.toggle.set_label("▾" if expanded else "▸")
 
     def set_progress(self, done, total, active):
         parts = [t("group.count", n=total)]
@@ -585,12 +592,13 @@ class MainWindow(Gtk.ApplicationWindow):
             gid = self._gid
             title_g = payload.get("title") or t("group.title", title="").split(":")[0]
             grow = GroupRow(self, gid, title_g, 0)
-            self.sections["groups"]["listbox"].append(grow)
+            self.sections["home"]["listbox"].append(grow)
             self.groups[gid] = {
                 "items": [],
                 "row": grow,
                 "title": title_g,
                 "format": None,
+                "expanded": True,
             }
             count = 0
             for e in entries:
@@ -975,6 +983,24 @@ class MainWindow(Gtk.ApplicationWindow):
             if parent is not None:
                 parent.remove(row)
             target.append(row)
+        group = self.groups.get(item.gid) if item.gid else None
+        if group is not None and key == "home" and not group.get("expanded", True):
+            row.set_visible(False)
+        elif key == "home":
+            row.set_visible(True)
+
+    def toggle_group(self, gid):
+        group = self.groups.get(gid)
+        if not group:
+            return
+        expanded = not group.get("expanded", True)
+        group["expanded"] = expanded
+        group["row"].set_expanded(expanded)
+        home = self.sections["home"]["listbox"]
+        for it in group["items"]:
+            row = self.rows.get(it.id)
+            if row is not None and row.get_parent() is home:
+                row.set_visible(expanded)
 
     def _count_rows(self, lb):
         n = 0
