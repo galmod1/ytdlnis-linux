@@ -638,6 +638,20 @@ class MainWindow(Gtk.ApplicationWindow):
                 lambda path: self._start_with_dir(item, path),
             ).present()
             return
+        if item.gid:
+            self._enqueue_item(item)
+            return
+        folder = item.download_dir or self.settings["download_dir"]
+        found = history.find(folder, item.video_id) if item.video_id else ""
+        item.existing_path = found
+        if found:
+            item.dup_index = self._next_copy_index(found)
+            self.refresh(item)
+            if interactive:
+                self._confirm_redownload(item, found)
+                return
+        else:
+            item.dup_index = 0
         self._enqueue_item(item)
 
     def _start_with_dir(self, item, path):
