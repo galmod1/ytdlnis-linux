@@ -152,6 +152,10 @@ class DownloadRow(Gtk.ListBoxRow):
         top.append(self.actions)
         box.append(top)
 
+        self.chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.chips.set_visible(False)
+        box.append(self.chips)
+
         self.info = Gtk.Label(label="", xalign=0)
         self.info.set_ellipsize(Pango.EllipsizeMode.END)
         self.info.add_css_class("dim")
@@ -178,6 +182,46 @@ class DownloadRow(Gtk.ListBoxRow):
         self.refresh()
 
     # ---------- helpers ----------
+    def _refresh_chips(self):
+        it = self.item
+        info = it.info or {}
+        items = []
+        formats = it.formats or []
+        heights = [f.get("height") or 0 for f in formats]
+        fps = [f.get("fps") or 0 for f in formats]
+        if not heights and info.get("formats"):
+            heights = [f.get("height") or 0 for f in info.get("formats") or []]
+            fps = [f.get("fps") or 0 for f in info.get("formats") or []]
+        max_h = max(heights) if heights else 0
+        max_fps = max(fps) if fps else 0
+        if max_h:
+            items.append(t("chip.quality", h=int(max_h)))
+            if max_fps and max_fps >= 50:
+                items.append(t("chip.fps", n=int(max_fps)))
+        codes = subtitle_codes(info)
+        if codes:
+            shown = "، ".join(codes[:3])
+            if len(codes) > 3:
+                shown += f" +{len(codes) - 3}"
+            items.append(t("chip.subs", langs=shown))
+        chapters = info.get("chapters") or []
+        if chapters:
+            items.append(t("chip.chapters", n=len(chapters)))
+        sig = "|".join(items)
+        if sig == getattr(self, "_chips_sig", None):
+            return
+        self._chips_sig = sig
+        child = self.chips.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            self.chips.remove(child)
+            child = nxt
+        for text in items:
+            chip = Gtk.Label(label=text)
+            chip.add_css_class("chip")
+            self.chips.append(chip)
+        self.chips.set_visible(bool(items))
+
     def _update_thumb_size(self):
         win_w = self.win.get_width() or 920
         try:
@@ -239,6 +283,7 @@ class DownloadRow(Gtk.ListBoxRow):
         self.title.set_text(it.title or it.url)
         self.title.set_tooltip_text(it.title)
         self._maybe_load_thumb()
+        self._refresh_chips()
 
         chunks = [t(f"status.{it.status.lower()}") if it.status else it.status]
         if it.status in ("DOWNLOADING", "PROCESSING"):

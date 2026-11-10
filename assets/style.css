@@ -33,6 +33,13 @@ progressbar progress {
   border-radius: 6px;
   padding: 2px 8px;
 }
+.chip {
+  background-color: alpha(currentColor, 0.10);
+  border-radius: 999px;
+  padding: 1px 9px;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
 list.boxed-list row {
   padding: 6px 10px;
 }
