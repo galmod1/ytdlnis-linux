@@ -72,6 +72,8 @@ class DownloadManager:
             split_chapters=item.split_chapters,
             trim_accurate=item.trim_accurate,
             partial_dir=item.partial_dir,
+            sub_langs=item.sub_langs,
+            embed_subs=item.embed_subs,
         )
         item.status = "DOWNLOADING"
         item.progress = 0.0

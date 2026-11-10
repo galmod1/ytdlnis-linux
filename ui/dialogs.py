@@ -852,3 +852,123 @@ class FilePickerDialog(Gtk.Window):
         else:
             self.on_choose(path)
             self.destroy()
+
+
+_NATIVE_SUB = {
+    "ar": "العربية", "en": "English", "fr": "Français", "es": "Español",
+    "de": "Deutsch", "tr": "Türkçe", "ru": "Русский", "fa": "فارسی",
+    "ur": "اردو", "hi": "हिन्दी", "id": "Indonesia", "pt": "Português",
+    "it": "Italiano", "zh": "中文", "ja": "日本語", "ko": "한국어",
+}
+
+_FALLBACK_SUBS = ["ar", "en", "fr", "es", "de", "tr", "ru"]
+
+
+def subtitle_codes(info):
+    codes = []
+    for key in ("subtitles", "automatic_captions"):
+        for code in (info or {}).get(key) or {}:
+            if code not in codes:
+                codes.append(code)
+    return codes
+
+
+class SubtitleDialog(Gtk.Window):
+    """Pick subtitle language and embedding for one item."""
+
+    def __init__(self, parent, item, on_saved):
+        super().__init__(
+            title=t("sub.title", title=item.title[:50]), modal=True, transient_for=parent
+        )
+        self.set_default_size(540, 320)
+        self.item = item
+        self.on_saved = on_saved
+        settings = getattr(parent, "settings", {}) or {}
+        info = item.info or {}
+        available = subtitle_codes(info)
+        codes = available or list(_FALLBACK_SUBS)
+        self.codes = codes
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_top(14)
+        box.set_margin_bottom(14)
+        box.set_margin_start(14)
+        box.set_margin_end(14)
+
+        self.enable = Gtk.CheckButton(label=t("sub.enable"))
+        initial_on = item.sub_langs is not None and item.sub_langs != ""
+        if item.sub_langs is None:
+            initial_on = bool(settings.get("write_subs"))
+        self.enable.set_active(bool(initial_on))
+        box.append(self.enable)
+
+        wanted = (item.sub_langs or settings.get("sub_langs") or "ar").split(",")[0].strip()
+        idx = codes.index(wanted) + 1 if wanted in codes else 1
+        labels = [t("sub.none")] + [f"{c} — {_NATIVE_SUB.get(c, c)}" for c in codes]
+        self.drop = Gtk.DropDown.new_from_strings(labels)
+        self.drop.set_selected(min(idx, len(labels) - 1))
+
+        form = Gtk.Grid(column_spacing=10, row_spacing=8)
+        form.attach(Gtk.Label(label=t("sub.lang"), xalign=0), 0, 0, 1, 1)
+        form.attach(self.drop, 1, 0, 1, 1)
+        box.append(form)
+
+        self.embed = Gtk.CheckButton(label=t("sub.embed"))
+        self.embed.set_active(bool(item.embed_subs))
+        box.append(self.embed)
+
+        note_text = t("sub.note_known", n=len(available)) if info else t("sub.note_unknown")
+        note = Gtk.Label(label=note_text, xalign=0)
+        note.set_wrap(True)
+        note.add_css_class("dim")
+        box.append(note)
+
+        self.note = Gtk.Label(label="", xalign=0)
+        self.note.set_wrap(True)
+        self.note.add_css_class("dim")
+        box.append(self.note)
+
+        self.enable.connect("toggled", self._sync)
+        self._sync(self.enable)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+        save_btn = Gtk.Button(label=t("sub.save"))
+        save_btn.add_css_class("suggested-action")
+        save_btn.connect("clicked", self._save)
+        actions.append(save_btn)
+        root.append(actions)
+        self.set_child(root)
+
+    def _sync(self, _w):
+        on = self.enable.get_active()
+        self.drop.set_sensitive(on)
+        self.embed.set_sensitive(on)
+
+    def _save(self, _b):
+        if not self.enable.get_active():
+            self.item.sub_langs = ""
+            self.item.embed_subs = True
+            self.on_saved()
+            self.destroy()
+            return
+        idx = self.drop.get_selected()
+        if idx <= 0:
+            self.note.set_text(t("sub.choose_lang"))
+            return
+        self.item.sub_langs = self.codes[idx - 1]
+        self.item.embed_subs = self.embed.get_active()
+        self.on_saved()
+        self.destroy()

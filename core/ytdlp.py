@@ -99,7 +99,8 @@ def resolve_selector(preset, item=None):
 
 def build_download_cmd(url, settings, mode="video", selector="", audio_format="mp3",
                        trim_start="", trim_end="", split_chapters=False,
-                       trim_accurate=True, partial_dir=""):
+                       trim_accurate=True, partial_dir="", sub_langs=None,
+                       embed_subs=None):
     template = settings["filename_template"]
     if split_chapters:
         base = template
@@ -126,14 +127,16 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         out.append("--embed-thumbnail")
     if settings["embed_metadata"]:
         out.append("--embed-metadata")
-    if settings["write_subs"]:
-        out += [
-            "--write-subs",
-            "--write-auto-subs",
-            "--sub-langs",
-            settings["sub_langs"] or "en",
-            "--embed-subs",
-        ]
+    if sub_langs is None:
+        langs = (settings["sub_langs"] or "en") if settings["write_subs"] else ""
+        embed = True
+    else:
+        langs = (sub_langs or "").strip()
+        embed = True if embed_subs is None else bool(embed_subs)
+    if langs:
+        out += ["--write-subs", "--write-auto-subs", "--sub-langs", langs]
+        if embed:
+            out.append("--embed-subs")
     if settings["sponsorblock"]:
         out += ["--sponsorblock-remove", settings["sponsorblock_categories"] or "sponsor"]
     if settings["proxy"]:

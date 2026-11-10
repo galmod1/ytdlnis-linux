@@ -22,6 +22,7 @@ from ui.dialogs import (
     FolderPickerDialog,
     PlaylistFormatDialog,
     SettingsDialog,
+    SubtitleDialog,
     TrimDialog,
 )
 
@@ -247,6 +248,12 @@ class DownloadRow(Gtk.ListBoxRow):
         if it.trim_start or it.trim_end:
             rng = f"{it.trim_start or '0:00'}–{it.trim_end}" if it.trim_end else f"{it.trim_start or '0:00'}→"
             chunks.append(t("trim.indicator", range=rng))
+        if it.sub_langs is not None:
+            if it.sub_langs == "":
+                chunks.append(t("sub.off"))
+            else:
+                key = "sub.indicator_embedded" if it.embed_subs else "sub.indicator"
+                chunks.append(t(key, lang=it.sub_langs))
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
@@ -271,6 +278,7 @@ class DownloadRow(Gtk.ListBoxRow):
         elif it.status == "READY":
             self.actions.append(self._button(t("btn.download"), lambda b: w.quick_download(it), "suggested-action"))
             self.actions.append(self._button(t("btn.format"), lambda b: w.choose_format(it)))
+            self.actions.append(self._button(t("btn.subtitle"), lambda b: w.choose_subtitle(it)))
             self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
@@ -545,6 +553,11 @@ class MainWindow(Gtk.ApplicationWindow):
         if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
             return
         TrimDialog(self, item, lambda: self.refresh(item)).present()
+
+    def choose_subtitle(self, item):
+        if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
+            return
+        SubtitleDialog(self, item, lambda: self.refresh(item)).present()
 
     def _formats_ready(self, item, kind, payload, err):
         if err:
