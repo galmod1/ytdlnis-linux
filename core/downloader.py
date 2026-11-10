@@ -37,6 +37,7 @@ class DownloadManager:
         item.error = ""
         self.queue.append(item)
         self._pump()
+        self.on_update(item)
 
     def _slot_limit(self):
         try:
