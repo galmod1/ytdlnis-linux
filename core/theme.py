@@ -25,7 +25,10 @@ ACCENT_COLORS = {
 
 FONT_VALUES = ["small", "normal", "large"]
 FONT_KEYS = [f"font.{k}" for k in FONT_VALUES]
-FONT_SIZES = {"small": "92%", "normal": "100%", "large": "112%"}
+FONT_PERCENT = {"small": 92, "normal": 100, "large": 112}
+
+SCALE_VALUES = [1.0, 1.25, 1.5]
+SCALE_LABELS = ["100%", "125%", "150%"]
 
 DARK_CANDIDATES = ["Adwaita-dark", "Breeze-Dark"]
 LIGHT_CANDIDATES = ["Adwaita", "Breeze"]
@@ -96,13 +99,67 @@ _appearance_provider = None
 
 
 def apply_appearance(settings):
-    """Apply accent colour and font scale via a dynamic CSS provider."""
+    """Apply accent colour, font/UI scale, high contrast and reduced motion."""
     global _appearance_provider
     display = Gdk.Display.get_default()
     if display is None:
         return
     accent = ACCENT_COLORS.get(settings.get("accent", "blue"), ACCENT_COLORS["blue"])
-    font = FONT_SIZES.get(settings.get("font_scale", "normal"), FONT_SIZES["normal"])
+    base = FONT_PERCENT.get(settings.get("font_scale", "normal"), 100)
+    try:
+        scale = float(settings.get("ui_scale", 1.0))
+    except (TypeError, ValueError):
+        scale = 1.0
+    if scale not in SCALE_VALUES:
+        scale = 1.0
+    font = f"{round(base * scale)}%"
+
+    gtk_settings = Gtk.Settings.get_default()
+    if gtk_settings is not None:
+        try:
+            gtk_settings.set_property(
+                "gtk-enable-animations", not bool(settings.get("reduce_motion", False))
+            )
+        except (TypeError, AttributeError):
+            pass
+
+    contrast = bool(settings.get("high_contrast", False))
+    extra = ""
+    if contrast:
+        extra = """
+window, dialog, row, list, listview {
+  background-color: #000000;
+  color: #ffffff;
+}
+label, entry, button, dropdown, checkbutton, spinner {
+  color: #ffffff;
+}
+entry, dropdown > button, button {
+  background-image: none;
+  background-color: #101010;
+  border: 1px solid #ffffff;
+}
+button:checked, stackswitcher > button:checked {
+  background-color: #ffd400;
+  color: #000000;
+  border-color: #ffd400;
+}
+progressbar trough {
+  background-color: #262626;
+  border: 1px solid #ffffff;
+}
+progressbar > trough > progress {
+  background-color: #ffd400;
+}
+.dim {
+  opacity: 1;
+  color: #dddddd;
+}
+.separator {
+  background-color: #ffffff;
+}
+"""
+
     css = f"""
 @define-color theme_selected_bg_color {accent};
 @define-color theme_selected_fg_color #ffffff;
@@ -119,12 +176,12 @@ button.suggested-action {{
   background-color: {accent};
   color: #ffffff;
 }}
-button.suggested-action:hover {{
-  background-color: {accent};
-}}
 button:hover {{
   background-image: none;
   background-color: alpha({accent}, 0.20);
+}}
+button.suggested-action:hover {{
+  background-color: {accent};
 }}
 stackswitcher > button:hover {{
   background-color: alpha({accent}, 0.28);
@@ -150,6 +207,7 @@ switch:checked {{
   background-color: {accent};
   border-color: {accent};
 }}
+{extra}
 """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))

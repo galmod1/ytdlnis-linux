@@ -15,6 +15,8 @@ from core.theme import (
     ACCENT_VALUES,
     FONT_KEYS,
     FONT_VALUES,
+    SCALE_LABELS,
+    SCALE_VALUES,
     THEME_KEYS,
     THEME_VALUES,
     apply_appearance,
@@ -88,6 +90,21 @@ class SettingsDialog(Gtk.Window):
             0 if settings.get("row_density", "comfortable") == "comfortable" else 1
         )
         box.append(_row(t("settings.density"), self.density_dd))
+
+        self.scale_dd = Gtk.DropDown.new_from_strings(SCALE_LABELS)
+        scale_value = settings.get("ui_scale", 1.0)
+        self.scale_dd.set_selected(
+            SCALE_VALUES.index(scale_value) if scale_value in SCALE_VALUES else 0
+        )
+        box.append(_row(t("settings.ui_scale"), self.scale_dd))
+
+        self.contrast_check = Gtk.CheckButton(label=t("settings.contrast"))
+        self.contrast_check.set_active(bool(settings.get("high_contrast", False)))
+        box.append(self.contrast_check)
+
+        self.motion_check = Gtk.CheckButton(label=t("settings.reduce_motion"))
+        self.motion_check.set_active(bool(settings.get("reduce_motion", False)))
+        box.append(self.motion_check)
 
         self.folder_entry = Gtk.Entry(text=settings["download_dir"])
         folder_btn = Gtk.Button(label=t("settings.choose"))
@@ -235,6 +252,9 @@ class SettingsDialog(Gtk.Window):
         self.accent_dd.set_selected(ACCENT_VALUES.index(d["accent"]))
         self.font_dd.set_selected(FONT_VALUES.index(d["font_scale"]))
         self.density_dd.set_selected(0 if d["row_density"] == "comfortable" else 1)
+        self.scale_dd.set_selected(SCALE_VALUES.index(d["ui_scale"]))
+        self.contrast_check.set_active(bool(d["high_contrast"]))
+        self.motion_check.set_active(bool(d["reduce_motion"]))
         self.folder_entry.set_text(d["download_dir"])
         self.ask_dir_check.set_active(bool(d["ask_download_dir"]))
         self.template_entry.set_text(d["filename_template"])
@@ -334,6 +354,9 @@ class SettingsDialog(Gtk.Window):
         s["accent"] = ACCENT_VALUES[self.accent_dd.get_selected()]
         s["font_scale"] = FONT_VALUES[self.font_dd.get_selected()]
         s["row_density"] = "compact" if self.density_dd.get_selected() == 1 else "comfortable"
+        s["ui_scale"] = SCALE_VALUES[self.scale_dd.get_selected()]
+        s["high_contrast"] = self.contrast_check.get_active()
+        s["reduce_motion"] = self.motion_check.get_active()
         try:
             s.save()
         except OSError as exc:

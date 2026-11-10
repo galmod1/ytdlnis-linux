@@ -67,6 +67,14 @@ STATUS_SECTION = {
 }
 
 
+def _a11y(widget, text):
+    """Set the accessible name of a widget (best effort, never fatal)."""
+    try:
+        widget.update_property([Gtk.AccessibleProperty.LABEL], [text])
+    except Exception:
+        pass
+
+
 class GroupRow(Gtk.ListBoxRow):
     """Header row for an expanded playlist."""
 
@@ -95,6 +103,7 @@ class GroupRow(Gtk.ListBoxRow):
         self.toggle = Gtk.Button(label="▾")
         self.toggle.set_tooltip_text(t("group.toggle"))
         self.toggle.connect("clicked", lambda b: win.toggle_group(gid))
+        _a11y(self.toggle, t("a11y.toggle_group"))
         box.append(self.toggle)
 
         btn_fmt = Gtk.Button(label=t("btn.format"))
@@ -156,6 +165,7 @@ class DownloadRow(Gtk.ListBoxRow):
         self.picture = Gtk.Picture()
         self.picture.set_content_fit(Gtk.ContentFit.COVER)
         self.picture.set_can_shrink(True)
+        _a11y(self.picture, t("a11y.thumbnail"))
         self.thumb_stack.add_named(self.picture, "pic")
         self._update_thumb_size()
         outer.append(self.thumb_stack)
@@ -192,6 +202,7 @@ class DownloadRow(Gtk.ListBoxRow):
 
         self.bar = Gtk.ProgressBar()
         self.bar.set_show_text(False)
+        _a11y(self.bar, t("a11y.progress"))
         box.append(self.bar)
 
         outer.append(box)

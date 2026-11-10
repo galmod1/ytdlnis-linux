@@ -48,6 +48,9 @@ DEFAULTS = {
     "theme": "system",
     "accent": "blue",
     "font_scale": "normal",
+    "ui_scale": 1.0,
+    "high_contrast": False,
+    "reduce_motion": False,
     "row_density": "comfortable",
     "thumb_zoom": 1.0,
 }
