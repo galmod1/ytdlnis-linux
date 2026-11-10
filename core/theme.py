@@ -104,6 +104,13 @@ def apply_appearance(settings):
     accent = ACCENT_COLORS.get(settings.get("accent", "blue"), ACCENT_COLORS["blue"])
     font = FONT_SIZES.get(settings.get("font_scale", "normal"), FONT_SIZES["normal"])
     css = f"""
+@define-color theme_selected_bg_color {accent};
+@define-color theme_selected_fg_color #ffffff;
+@define-color selected_bg_color {accent};
+@define-color selected_fg_color #ffffff;
+@define-color accent_color {accent};
+@define-color accent_bg_color {accent};
+@define-color accent_fg_color #ffffff;
 window {{
   font-size: {font};
 }}
@@ -114,6 +121,21 @@ button.suggested-action {{
 }}
 button.suggested-action:hover {{
   background-color: {accent};
+}}
+stackswitcher > button:checked {{
+  background-image: none;
+  background-color: {accent};
+  color: #ffffff;
+}}
+progressbar > trough > progress {{
+  background-image: none;
+  background-color: {accent};
+}}
+checkbutton check:checked,
+switch:checked {{
+  background-image: none;
+  background-color: {accent};
+  border-color: {accent};
 }}
 """
     provider = Gtk.CssProvider()
