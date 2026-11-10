@@ -208,15 +208,15 @@ class DownloadRow(Gtk.ListBoxRow):
 
     def _quality_text(self, it):
         mode, selector, af = "", "", ""
-        group = self.groups.get(it.gid) if it.gid else None
+        group = self.win.groups.get(it.gid) if it.gid else None
         if group and group.get("format"):
             mode, selector, af = group["format"]
-        elif it.mode or it.selector:
+        elif it.selector or it.mode == "audio":
             mode, selector, af = it.mode, it.selector, it.audio_format
         else:
             from core.ytdlp import resolve_selector
 
-            mode, selector, af = resolve_selector(self.settings["format_preset"])
+            mode, selector, af = resolve_selector(self.win.settings["format_preset"])
         if mode == "audio":
             return t("chip.audio", fmt=(af or "mp3").upper())
         match = re.search(r"height<=(\d+)", selector or "")
