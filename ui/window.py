@@ -800,7 +800,24 @@ class MainWindow(Gtk.ApplicationWindow):
     def remove_item(self, item):
         if item.status in ("DOWNLOADING", "PROCESSING"):
             self.manager.cancel(item)
+        gid = item.gid
         self._drop_item(item.id)
+        if gid:
+            self._drop_from_group(gid, item)
+
+    def _drop_from_group(self, gid, item):
+        group = self.groups.get(gid)
+        if not group:
+            return
+        if item in group["items"]:
+            group["items"].remove(item)
+        if not group["items"]:
+            parent = group["row"].get_parent()
+            if parent is not None:
+                parent.remove(group["row"])
+            self.groups.pop(gid, None)
+            self._refresh_groups()
+            self.update_footer()
 
     def _drop_item(self, item_id):
         row = self.rows.pop(item_id, None)
