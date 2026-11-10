@@ -22,6 +22,7 @@ class DownloadManager:
         self.on_update = on_update          # called with item (already on main loop)
         self.queue = []                     # items waiting
         self.running = {}                   # id -> item
+        shutil.rmtree(PARTIAL_ROOT, ignore_errors=True)
 
     # ---------- queue ----------
     def enqueue(self, item, mode="video", selector="", audio_format="mp3"):
