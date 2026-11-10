@@ -46,6 +46,9 @@ DEFAULTS = {
     "speed_limit_kb": 0,
     "language": "ar",
     "theme": "system",
+    "accent": "blue",
+    "font_scale": "normal",
+    "row_density": "comfortable",
     "thumb_zoom": 1.0,
 }
 

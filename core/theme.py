@@ -6,10 +6,26 @@ import re
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, Gtk
 
 THEME_VALUES = ["system", "dark", "light"]
 THEME_KEYS = ["theme.system", "theme.dark", "theme.light"]
+
+ACCENT_VALUES = ["blue", "green", "teal", "orange", "purple", "red"]
+ACCENT_KEYS = [f"accent.{k}" for k in ACCENT_VALUES]
+ACCENT_COLORS = {
+    "blue": "#3584e4",
+    "green": "#2ec27e",
+    "teal": "#00a3a3",
+    "orange": "#ff7800",
+    "purple": "#9141ac",
+    "red": "#e01b24",
+}
+
+FONT_VALUES = ["small", "normal", "large"]
+FONT_KEYS = [f"font.{k}" for k in FONT_VALUES]
+FONT_SIZES = {"small": "92%", "normal": "100%", "large": "112%"}
 
 DARK_CANDIDATES = ["Adwaita-dark", "Breeze-Dark"]
 LIGHT_CANDIDATES = ["Adwaita", "Breeze"]
@@ -74,3 +90,37 @@ def apply_theme(mode):
         candidate = _first_available(LIGHT_CANDIDATES)
         if candidate:
             settings.set_property("gtk-theme-name", candidate)
+
+
+_appearance_provider = None
+
+
+def apply_appearance(settings):
+    """Apply accent colour and font scale via a dynamic CSS provider."""
+    global _appearance_provider
+    display = Gdk.Display.get_default()
+    if display is None:
+        return
+    accent = ACCENT_COLORS.get(settings.get("accent", "blue"), ACCENT_COLORS["blue"])
+    font = FONT_SIZES.get(settings.get("font_scale", "normal"), FONT_SIZES["normal"])
+    css = f"""
+window {{
+  font-size: {font};
+}}
+button.suggested-action {{
+  background-image: none;
+  background-color: {accent};
+  color: #ffffff;
+}}
+button.suggested-action:hover {{
+  background-color: {accent};
+}}
+"""
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    if _appearance_provider is not None:
+        Gtk.StyleContext.remove_provider_for_display(display, _appearance_provider)
+    Gtk.StyleContext.add_provider_for_display(
+        display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+    )
+    _appearance_provider = provider

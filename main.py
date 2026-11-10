@@ -11,7 +11,7 @@ from gi.repository import Gdk, Gtk
 
 from core.i18n import set_language
 from core.settings import Settings
-from core.theme import apply_theme
+from core.theme import apply_appearance, apply_theme
 from ui.window import MainWindow
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -34,6 +34,7 @@ class App(Gtk.Application):
             provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
+        apply_appearance(self.settings)
 
     def do_activate(self):
         if self.window is None:

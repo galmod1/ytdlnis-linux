@@ -19,6 +19,7 @@ from core.i18n import t
 from core.models import DownloadItem, pick_thumb
 from core.version import APP_NAME, APP_VERSION
 from core import history
+from core.theme import apply_appearance
 from ui.dialogs import (
     ConfirmDialog,
     FormatDialog,
@@ -145,10 +146,7 @@ class DownloadRow(Gtk.ListBoxRow):
         box.set_hexpand(True)
 
         outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        outer.set_margin_top(8)
-        outer.set_margin_bottom(8)
-        outer.set_margin_start(10)
-        outer.set_margin_end(12)
+        self.outer = outer
 
         self.thumb_stack = Gtk.Stack()
         self.thumb_stack.set_valign(Gtk.Align.CENTER)
@@ -198,9 +196,17 @@ class DownloadRow(Gtk.ListBoxRow):
 
         outer.append(box)
         self.set_child(outer)
+        self.apply_density()
         self.refresh()
 
     # ---------- helpers ----------
+    def apply_density(self):
+        compact = self.win.settings.get("row_density", "comfortable") == "compact"
+        self.outer.set_margin_top(3 if compact else 8)
+        self.outer.set_margin_bottom(3 if compact else 8)
+        self.outer.set_margin_start(8 if compact else 10)
+        self.outer.set_margin_end(10 if compact else 12)
+
     def _refresh_chips(self):
         it = self.item
         items = [self._quality_text(it)]
@@ -969,6 +975,9 @@ class MainWindow(Gtk.ApplicationWindow):
     def open_settings(self, _b):
         def saved(lang_changed=False):
             self.manager.pump()
+            apply_appearance(self.settings)
+            for row in self.rows.values():
+                row.apply_density()
             self.update_footer()
             if lang_changed:
                 self.footer.set_text(t("msg.restart"))

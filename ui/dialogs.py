@@ -10,7 +10,16 @@ from gi.repository import GLib, Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
 from core.models import human_size, parse_time, format_time
-from core.theme import THEME_KEYS, THEME_VALUES, apply_theme
+from core.theme import (
+    ACCENT_KEYS,
+    ACCENT_VALUES,
+    FONT_KEYS,
+    FONT_VALUES,
+    THEME_KEYS,
+    THEME_VALUES,
+    apply_appearance,
+    apply_theme,
+)
 
 COOKIES_VALUES = ["", "firefox", "chrome", "chromium", "brave", "edge"]
 
@@ -59,6 +68,26 @@ class SettingsDialog(Gtk.Window):
         th = settings.get("theme", "system")
         self.theme_dd.set_selected(THEME_VALUES.index(th) if th in THEME_VALUES else 0)
         box.append(_row(t("settings.appearance"), self.theme_dd))
+
+        self.accent_dd = Gtk.DropDown.new_from_strings([t(k) for k in ACCENT_KEYS])
+        accent = settings.get("accent", "blue")
+        self.accent_dd.set_selected(ACCENT_VALUES.index(accent) if accent in ACCENT_VALUES else 0)
+        box.append(_row(t("settings.accent"), self.accent_dd))
+
+        self.font_dd = Gtk.DropDown.new_from_strings([t(k) for k in FONT_KEYS])
+        font_scale = settings.get("font_scale", "normal")
+        self.font_dd.set_selected(
+            FONT_VALUES.index(font_scale) if font_scale in FONT_VALUES else 1
+        )
+        box.append(_row(t("settings.font"), self.font_dd))
+
+        self.density_dd = Gtk.DropDown.new_from_strings(
+            [t("density.comfortable"), t("density.compact")]
+        )
+        self.density_dd.set_selected(
+            0 if settings.get("row_density", "comfortable") == "comfortable" else 1
+        )
+        box.append(_row(t("settings.density"), self.density_dd))
 
         self.folder_entry = Gtk.Entry(text=settings["download_dir"])
         folder_btn = Gtk.Button(label=t("settings.choose"))
@@ -203,6 +232,9 @@ class SettingsDialog(Gtk.Window):
         d = DEFAULTS
         self.lang_dd.set_selected(LANG_VALUES.index(d["language"]))
         self.theme_dd.set_selected(THEME_VALUES.index(d["theme"]))
+        self.accent_dd.set_selected(ACCENT_VALUES.index(d["accent"]))
+        self.font_dd.set_selected(FONT_VALUES.index(d["font_scale"]))
+        self.density_dd.set_selected(0 if d["row_density"] == "comfortable" else 1)
         self.folder_entry.set_text(d["download_dir"])
         self.ask_dir_check.set_active(bool(d["ask_download_dir"]))
         self.template_entry.set_text(d["filename_template"])
@@ -299,6 +331,9 @@ class SettingsDialog(Gtk.Window):
         s["extra_args"] = self.extra_entry.get_text().strip()
         s["language"] = LANG_VALUES[self.lang_dd.get_selected()]
         s["theme"] = THEME_VALUES[self.theme_dd.get_selected()]
+        s["accent"] = ACCENT_VALUES[self.accent_dd.get_selected()]
+        s["font_scale"] = FONT_VALUES[self.font_dd.get_selected()]
+        s["row_density"] = "compact" if self.density_dd.get_selected() == 1 else "comfortable"
         try:
             s.save()
         except OSError as exc:
@@ -309,6 +344,7 @@ class SettingsDialog(Gtk.Window):
         if lang_changed:
             set_language(s["language"])
         apply_theme(s["theme"])
+        apply_appearance(s)
         self.on_saved(lang_changed)
         self.destroy()
 
