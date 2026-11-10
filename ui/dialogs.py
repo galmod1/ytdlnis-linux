@@ -621,9 +621,9 @@ class TrimDialog(Gtk.Window):
         form.set_margin_top(4)
         start_lab = Gtk.Label(label=t("trim.start"), xalign=0)
         self.start_entry = Gtk.Entry(text=item.trim_start)
-        self.start_entry.set_placeholder_text("0:00")
+        self.start_entry.set_placeholder_text("HH:MM:SS")
         self.end_entry = Gtk.Entry(text=item.trim_end)
-        self.end_entry.set_placeholder_text("1:30")
+        self.end_entry.set_placeholder_text("HH:MM:SS")
         end_lab = Gtk.Label(label=t("trim.end"), xalign=0)
 
         def time_box(entry):
@@ -711,6 +711,9 @@ class TrimDialog(Gtk.Window):
         end = self.end_entry.get_text().strip() if self.enable.get_active() else ""
         start_sec = parse_time(start)
         end_sec = parse_time(end)
+        if self.enable.get_active() and not start and not end:
+            self.note.set_text(t("trim.need_time"))
+            return
         if start and start_sec is None:
             self.note.set_text(t("trim.invalid"))
             return
