@@ -483,6 +483,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_child(root)
         self.update_footer()
         self.connect("close-request", self._on_close)
+        self._skip_all_for = None
         GLib.timeout_add_seconds(1, self._tick)
 
     def _tick(self):
@@ -638,9 +639,6 @@ class MainWindow(Gtk.ApplicationWindow):
                 lambda path: self._start_with_dir(item, path),
             ).present()
             return
-        if item.gid:
-            self._enqueue_item(item)
-            return
         folder = item.download_dir or self.settings["download_dir"]
         found = history.find(folder, item.video_id) if item.video_id else ""
         item.existing_path = found
@@ -648,6 +646,9 @@ class MainWindow(Gtk.ApplicationWindow):
             item.dup_index = self._next_copy_index(found)
             self.refresh(item)
             if interactive:
+                if item.gid and self._skip_all_for == item.gid:
+                    self._skip_item(item, found)
+                    return
                 self._confirm_redownload(item, found)
                 return
         else:
@@ -686,7 +687,21 @@ class MainWindow(Gtk.ApplicationWindow):
             t("dup.found_detail", name=os.path.basename(path)),
             t("dup.again"),
             lambda: self._enqueue_item(item),
+            on_skip=lambda: self._skip_item(item, path),
+            on_skip_all=lambda: self._skip_rest(item),
         ).present()
+
+    def _skip_rest(self, item):
+        if item.gid:
+            self._skip_all_for = item.gid
+        self._skip_item(item, item.existing_path)
+
+    def _skip_item(self, item, path):
+        item.filepath = path
+        item.status = "DONE"
+        item.progress = 1.0
+        item.speed = item.eta = ""
+        self.refresh(item)
 
     def _enqueue_item(self, item):
         from core.ytdlp import resolve_selector
@@ -783,10 +798,56 @@ class MainWindow(Gtk.ApplicationWindow):
         g = self.groups.get(gid)
         if not g:
             return
+        self._skip_all_for = None
+        pending = [it for it in g["items"] if it.status == "READY"]
+        self._process_group(gid, pending)
+
+    def _process_group(self, gid, pending):
+        g = self.groups.get(gid)
+        if not g:
+            return
         mode, selector, af = self._group_format(g)
-        for it in g["items"]:
-            if it.status in ("READY", "PAUSED", "CANCELLED"):
-                self.manager.enqueue(it, mode, selector, af)
+        while pending:
+            item = pending.pop(0)
+            if item.status != "READY":
+                continue
+            found = history.find(self.settings["download_dir"], item.video_id) if item.video_id else ""
+            item.existing_path = found
+            if not found:
+                item.dup_index = 0
+                self.manager.enqueue(item, mode, selector, af)
+                continue
+            item.dup_index = self._next_copy_index(found)
+            self.refresh(item)
+            if self._skip_all_for == gid:
+                self._skip_item(item, found)
+                continue
+            self._confirm_group_item(gid, item, found, pending, mode, selector, af)
+            return
+
+    def _confirm_group_item(self, gid, item, path, pending, mode, selector, af):
+        def confirm():
+            self.manager.enqueue(item, mode, selector, af)
+            self._process_group(gid, pending)
+
+        def skip():
+            self._skip_item(item, path)
+            self._process_group(gid, pending)
+
+        def skip_all():
+            self._skip_all_for = gid
+            self._skip_item(item, path)
+            self._process_group(gid, pending)
+
+        ConfirmDialog(
+            self,
+            t("dup.found_title"),
+            t("dup.found_detail", name=os.path.basename(path)),
+            t("dup.again"),
+            confirm,
+            on_skip=skip,
+            on_skip_all=skip_all,
+        ).present()
 
     def pause_group(self, gid):
         g = self.groups.get(gid)

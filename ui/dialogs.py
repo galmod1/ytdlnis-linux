@@ -1076,12 +1076,23 @@ class ScheduleDialog(Gtk.Window):
 
 
 class ConfirmDialog(Gtk.Window):
-    """Explicit two-button confirmation (avoids RTL ambiguity of system dialogs)."""
+    """Explicit multi-button confirmation (avoids RTL ambiguity of system dialogs)."""
 
-    def __init__(self, parent, title, message, confirm_label, on_confirm):
+    def __init__(
+        self,
+        parent,
+        title,
+        message,
+        confirm_label,
+        on_confirm,
+        on_skip=None,
+        on_skip_all=None,
+    ):
         super().__init__(title=title, modal=True, transient_for=parent)
-        self.set_default_size(480, 220)
+        self.set_default_size(520, 230)
         self.on_confirm = on_confirm
+        self.on_skip = on_skip
+        self.on_skip_all = on_skip_all
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.set_margin_top(16)
@@ -1103,9 +1114,14 @@ class ConfirmDialog(Gtk.Window):
         actions.set_margin_start(12)
         actions.set_margin_end(12)
 
-        cancel_btn = Gtk.Button(label=t("folder.cancel"))
-        cancel_btn.connect("clicked", lambda b: self.destroy())
-        actions.append(cancel_btn)
+        skip_btn = Gtk.Button(label=t("dup.skip"))
+        skip_btn.connect("clicked", self._skip)
+        actions.append(skip_btn)
+
+        if on_skip_all is not None:
+            skip_all_btn = Gtk.Button(label=t("dup.skip_all"))
+            skip_all_btn.connect("clicked", self._skipall)
+            actions.append(skip_all_btn)
 
         spacer = Gtk.Box()
         spacer.set_hexpand(True)
@@ -1122,3 +1138,13 @@ class ConfirmDialog(Gtk.Window):
     def _cfm(self, _b):
         self.destroy()
         self.on_confirm()
+
+    def _skip(self, _b):
+        self.destroy()
+        if self.on_skip is not None:
+            self.on_skip()
+
+    def _skipall(self, _b):
+        self.destroy()
+        if self.on_skip_all is not None:
+            self.on_skip_all()
