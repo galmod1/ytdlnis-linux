@@ -33,6 +33,15 @@ progressbar progress {
   border-radius: 6px;
   padding: 2px 8px;
 }
+.dup-open {
+  color: #e5a50a;
+  background-image: none;
+  background-color: alpha(#e5a50a, 0.15);
+  border: 1px solid alpha(#e5a50a, 0.55);
+}
+.dup-open:hover {
+  background-color: alpha(#e5a50a, 0.25);
+}
 .chip {
   background-color: alpha(currentColor, 0.10);
   border-radius: 999px;

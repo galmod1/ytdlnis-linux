@@ -360,7 +360,9 @@ class DownloadRow(Gtk.ListBoxRow):
             self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
             self.actions.append(self._button(t("btn.schedule"), lambda b: w.choose_schedule(it)))
             if it.existing_path:
-                self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_path(it.existing_path)))
+                self.actions.append(
+                    self._button(t("btn.open_file"), lambda b: w.open_path(it.existing_path), "dup-open")
+                )
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
             self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_file(it)))
