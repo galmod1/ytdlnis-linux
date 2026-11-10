@@ -17,6 +17,7 @@ from core.downloader import DownloadManager, fetch_async
 from core.i18n import t
 from core.models import DownloadItem, pick_thumb
 from core.version import APP_NAME, APP_VERSION
+from core import history
 from ui.dialogs import (
     FormatDialog,
     FolderPickerDialog,
@@ -260,6 +261,8 @@ class DownloadRow(Gtk.ListBoxRow):
                     when=time.strftime("%Y-%m-%d %H:%M", time.localtime(it.schedule_at)),
                 )
             )
+        if it.existing_path:
+            chunks.append(t("dup.existing", name=os.path.basename(it.existing_path)))
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
@@ -288,6 +291,8 @@ class DownloadRow(Gtk.ListBoxRow):
                 self.actions.append(self._button(t("btn.subtitle"), lambda b: w.choose_subtitle(it)))
             self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
             self.actions.append(self._button(t("btn.schedule"), lambda b: w.choose_schedule(it)))
+            if it.existing_path:
+                self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_path(it.existing_path)))
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
             self.actions.append(self._button(t("btn.open_file"), lambda b: w.open_file(it)))
@@ -527,10 +532,12 @@ class MainWindow(Gtk.ApplicationWindow):
                     entry_mode=True,
                 )
                 child.gid = gid
+                child.video_id = e.get("id") or ""
+                child.existing_path = history.find(self.settings["download_dir"], child.video_id)
                 entry_thumb = pick_thumb(e)
                 if entry_thumb:
                     child.thumb = entry_thumb
-                    self.refresh(child)
+                self.refresh(child)
                 self.groups[gid]["items"].append(child)
                 count += 1
             grow.set_title(title_g, count)
@@ -538,6 +545,7 @@ class MainWindow(Gtk.ApplicationWindow):
             return
         ytdlp.apply_video_info(item, payload)
         item.status = "READY"
+        item.existing_path = history.find(self.settings["download_dir"], item.video_id)
         self.refresh(item)
         if self.settings["quick_mode"]:
             self.quick_download(item)
@@ -592,6 +600,7 @@ class MainWindow(Gtk.ApplicationWindow):
             return
         ytdlp.apply_video_info(item, payload)
         item.status = "READY"
+        item.existing_path = history.find(self.settings["download_dir"], item.video_id)
         self.refresh(item)
         self._open_format_dialog(item)
 
@@ -703,6 +712,12 @@ class MainWindow(Gtk.ApplicationWindow):
     def open_file(self, item):
         if item.filepath and os.path.exists(item.filepath):
             subprocess.Popen(["xdg-open", item.filepath])
+        else:
+            self.footer.set_text(t("err.file_missing"))
+
+    def open_path(self, path):
+        if path and os.path.exists(path):
+            subprocess.Popen(["xdg-open", path])
         else:
             self.footer.set_text(t("err.file_missing"))
 

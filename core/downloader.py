@@ -13,6 +13,8 @@ from gi.repository import GLib
 
 from . import ytdlp
 
+from . import history
+
 PARTIAL_ROOT = os.path.expanduser("~/.cache/ytdlnis-linux/partial")
 
 
@@ -172,6 +174,7 @@ class DownloadManager:
             self._cleanup_partial(item)
         elif code == 0:
             self._cleanup_partial(item)
+            history.invalidate()
         self.on_update(item)
         self._pump()
 

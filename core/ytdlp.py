@@ -68,6 +68,7 @@ def apply_video_info(item, info):
     item.title = info.get("title") or item.url
     item.duration = info.get("duration")
     item.thumb = pick_thumb(info)
+    item.video_id = info.get("id") or ""
     item.formats = simplify_formats(info)
 
 
