@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile all Python sources
+        run: python -m compileall -q main.py core ui
+      - name: Check translations load
+        run: |
+          python - <<'PY'
+          import ast, pathlib
+          tree = ast.parse(pathlib.Path("core/i18n.py").read_text(encoding="utf-8"))
+          print("i18n.py parses")
+          PY

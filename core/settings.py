@@ -53,6 +53,7 @@ DEFAULTS = {
     "reduce_motion": False,
     "row_density": "comfortable",
     "thumb_zoom": 1.0,
+    "engine_auto_update": True,
 }
 
 

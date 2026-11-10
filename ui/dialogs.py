@@ -1,6 +1,7 @@
 # GPL-3.0 — inspired by YTDLnis by Denis Çerri.
 """Format picker and settings dialogs (GTK4)."""
 import os
+import threading
 import time
 
 import gi
@@ -10,6 +11,7 @@ from gi.repository import GLib, Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
 from core.models import human_size, parse_time, format_time
+from core import ytdlp
 from core.theme import (
     ACCENT_KEYS,
     ACCENT_VALUES,
@@ -206,6 +208,20 @@ class SettingsDialog(Gtk.Window):
         network_box.append(_row(t("settings.extra"), self.extra_entry,
                         t("settings.extra_tip")))
 
+        self.engine_auto_check = Gtk.CheckButton(label=t("settings.engine_auto"))
+        self.engine_auto_check.set_active(bool(settings.get("engine_auto_update", True)))
+        network_box.append(self.engine_auto_check)
+
+        engine_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        engine_btn = Gtk.Button(label=t("settings.engine_update"))
+        engine_btn.connect("clicked", self._update_engine)
+        self.engine_note = Gtk.Label(label="", xalign=0)
+        self.engine_note.add_css_class("dim")
+        self.engine_note.set_wrap(True)
+        engine_row.append(engine_btn)
+        engine_row.append(self.engine_note)
+        network_box.append(engine_row)
+
         stack = Gtk.Stack()
         stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         for key, title_key, page in (
@@ -272,6 +288,7 @@ class SettingsDialog(Gtk.Window):
         self.scale_dd.set_selected(SCALE_VALUES.index(d["ui_scale"]))
         self.contrast_check.set_active(bool(d["high_contrast"]))
         self.motion_check.set_active(bool(d["reduce_motion"]))
+        self.engine_auto_check.set_active(bool(d["engine_auto_update"]))
         self.folder_entry.set_text(d["download_dir"])
         self.ask_dir_check.set_active(bool(d["ask_download_dir"]))
         self.template_entry.set_text(d["filename_template"])
@@ -321,6 +338,32 @@ class SettingsDialog(Gtk.Window):
             return
         self.cookies_file_entry.set_text(str(dest))
         self.note.set_text(t("settings.import_done", n=count, path=str(dest)))
+
+    def _update_engine(self, _b):
+        self.engine_note.set_text(t("engine.checking"))
+
+        def worker():
+            try:
+                from core import engine_update
+
+                version = engine_update.install_latest()
+                if version:
+                    message = t("engine.updated", version=version)
+                else:
+                    message = t("engine.none", version=ytdlp.ytdlp_version())
+            except Exception as exc:
+                message = t("engine.failed", error=str(exc)[:160])
+
+            def apply():
+                self.engine_note.set_text(message)
+                parent = self.get_transient_for()
+                if parent is not None and hasattr(parent, "update_footer"):
+                    parent.update_footer()
+                return False
+
+            GLib.idle_add(apply)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _alert(self, message):
         try:
@@ -374,6 +417,7 @@ class SettingsDialog(Gtk.Window):
         s["ui_scale"] = SCALE_VALUES[self.scale_dd.get_selected()]
         s["high_contrast"] = self.contrast_check.get_active()
         s["reduce_motion"] = self.motion_check.get_active()
+        s["engine_auto_update"] = self.engine_auto_check.get_active()
         try:
             s.save()
         except OSError as exc:

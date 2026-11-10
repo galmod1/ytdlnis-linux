@@ -145,6 +145,16 @@ flatpak build-bundle exportrepo org.galmod.ytdlnis.linux-0.1.0.flatpak org.galmo
 
 This software is a neutral technical tool. Users are solely responsible for ensuring their use complies with local laws, the terms of service of the sites involved, and copyright. The developer is not liable for any misuse or for content downloaded with it. It is intended for personal use; redistributing or selling copyrighted content is prohibited. The software does not circumvent DRM. Not affiliated with any content platform or with the original YTDLnis project.
 
+## التحديثات واستمرارية المشروع
+
+البرنامج مصمّم ليبقى يعمل حتى لو توقّف مطوّره الأصلي عن النشر:
+
+1. **محرّك yt-dlp يُحدَّث ذاتياً**: عند البدء (أو بزر «تحديث المحرك الآن» في الإعدادات ← الشبكة والكوكيز) يتحقق البرنامج من أحدث إصدار رسمي على GitHub، وينزّله إلى مجلد بيانات التطبيق القابل للكتابة، **ويتحقق من بصمة SHA-256** قبل تشغيله. يعمل داخل عزل Flatpak بلا صلاحيات إضافية، ويعود للنسخة المجمّدة إن فشل التنزيل.
+   - المسار: `~/.var/app/org.galmod.ytdlnis.linux/data/ytdlnis-linux/bin/yt-dlp` (داخل Flatpak)، أو `~/.local/share/ytdlnis-linux/bin/yt-dlp` (محلياً).
+2. **ffmpeg وطبقة GNOME** تتحدّث مع `flatpak update` — لا علاقة لها بالمطوّر.
+3. **تحديث الحزمة نفسها**: عند نشر التطبيق على Flathub يصل التحديث للمستخدم تلقائياً عبر Discover/GNOME Software أو `flatpak update`.
+4. **لو غاب المطوّر**: المستودع GPL-3.0، وخطوات الإصدار موثّقة في `CONTRIBUTING.md`، وملف Flatpak يحتوي `x-checker-data` ليفتح بوت Flathub طلب تحديث تلقائي عند كل إصدار yt-dlp. أي شخص يمكنه تبنّي المستودع، أو إضافة مصانين، أو نقل ملكية تطبيق Flathub.
+
 ## Contributing
 
 Pull requests and issues are welcome. The UI is translated in `core/i18n.py`.

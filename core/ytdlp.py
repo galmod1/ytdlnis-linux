@@ -8,22 +8,47 @@ import subprocess
 
 from .models import parse_time, pick_thumb, simplify_formats
 
-YTDLP = shutil.which("yt-dlp") or os.path.expanduser("~/.local/bin/yt-dlp")
 FFMPEG = shutil.which("ffmpeg")
+_VERSION_CACHE = ""
 
 
-def ytdlp_version():
+def engine_dir():
+    """Writable directory holding a user-updated yt-dlp binary."""
+    try:
+        import gi
+
+        gi.require_version("GLib", "2.0")
+        from gi.repository import GLib
+
+        base = GLib.get_user_data_dir()
+    except Exception:
+        base = os.path.expanduser("~/.local/share")
+    return os.path.join(base, "ytdlnis-linux", "bin")
+
+
+def ytdlp_binary():
+    override = os.path.join(engine_dir(), "yt-dlp")
+    if os.path.isfile(override) and os.access(override, os.X_OK):
+        return override
+    return shutil.which("yt-dlp") or os.path.expanduser("~/.local/bin/yt-dlp")
+
+
+def ytdlp_version(force=False):
+    global _VERSION_CACHE
+    if _VERSION_CACHE and not force:
+        return _VERSION_CACHE
     try:
         out = subprocess.run(
-            [YTDLP, "--version"], capture_output=True, text=True, timeout=15
+            [ytdlp_binary(), "--version"], capture_output=True, text=True, timeout=15
         )
-        return out.stdout.strip() or "?"
+        _VERSION_CACHE = out.stdout.strip() or "?"
     except Exception:
-        return "?"
+        _VERSION_CACHE = "?"
+    return _VERSION_CACHE
 
 
 def _run_json(url, flat=False, timeout=90, extra=None):
-    cmd = [YTDLP, "-J", "--no-warnings", "--no-colors"]
+    cmd = [ytdlp_binary(), "-J", "--no-warnings", "--no-colors"]
     if flat:
         cmd.append("--flat-playlist")
     if extra:
@@ -109,7 +134,7 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
             base = base[: -len(".%(ext)s")]
         template = base + " - %(section_number)02d %(section_title)s.%(ext)s"
     out = [
-        YTDLP,
+        ytdlp_binary(),
         "--no-colors",
         "--newline",
         "--progress",

@@ -3,6 +3,7 @@
 import os
 import re
 import subprocess
+import threading
 import time
 from urllib.parse import urlparse
 
@@ -31,8 +32,6 @@ from ui.dialogs import (
     TrimDialog,
     subtitle_codes,
 )
-
-VERSION = ytdlp.ytdlp_version()
 
 SECTION_DEFS = [
     ("home", "tab.home"),
@@ -519,6 +518,31 @@ class MainWindow(Gtk.ApplicationWindow):
         self.connect("close-request", self._on_close)
         self._skip_all_for = None
         GLib.timeout_add_seconds(1, self._tick)
+        GLib.timeout_add_seconds(4, self._auto_update_engine)
+
+    def _auto_update_engine(self):
+        if not self.settings.get("engine_auto_update", True):
+            return False
+
+        def worker():
+            version = None
+            try:
+                from core import engine_update
+
+                version = engine_update.install_latest()
+            except Exception:
+                version = None
+            GLib.idle_add(lambda: self._engine_updated(version))
+
+        threading.Thread(target=worker, daemon=True).start()
+        return False
+
+    def _engine_updated(self, version):
+        if version:
+            self.update_footer()
+            self.footer.set_text(t("engine.updated", version=version))
+            GLib.timeout_add_seconds(6, lambda: (self.update_footer(), False)[1])
+        return False
 
     def _tick(self):
         now = time.time()
@@ -1135,7 +1159,7 @@ class MainWindow(Gtk.ApplicationWindow):
         folder = os.path.basename(self.settings["download_dir"].rstrip("/")) or self.settings["download_dir"]
         parts = [
             f"{APP_NAME} v{APP_VERSION}",
-            f"yt-dlp {VERSION}",
+            f"yt-dlp {ytdlp.ytdlp_version()}",
             t("footer.running", n=running),
             t("footer.done", n=done),
             t("footer.items", n=len(self.items)),
