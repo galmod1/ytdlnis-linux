@@ -99,7 +99,7 @@ def resolve_selector(preset, item=None):
 
 def build_download_cmd(url, settings, mode="video", selector="", audio_format="mp3",
                        trim_start="", trim_end="", split_chapters=False,
-                       trim_accurate=True):
+                       trim_accurate=True, partial_dir=""):
     template = settings["filename_template"]
     if split_chapters:
         base = template
@@ -120,6 +120,8 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         "--print",
         "after_move:FP %(filepath)s",
     ]
+    if partial_dir:
+        out += ["-P", f"temp:{partial_dir}"]
     if settings["embed_thumbnail"]:
         out.append("--embed-thumbnail")
     if settings["embed_metadata"]:

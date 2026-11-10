@@ -4,6 +4,7 @@ import subprocess
 import threading
 import time
 import os
+import shutil
 
 import gi
 
@@ -11,6 +12,8 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import GLib
 
 from . import ytdlp
+
+PARTIAL_ROOT = os.path.expanduser("~/.cache/ytdlnis-linux/partial")
 
 
 class DownloadManager:
@@ -55,6 +58,8 @@ class DownloadManager:
             item.error = "رابط فارغ"
             self.on_update(item)
             return
+        item.partial_dir = os.path.join(PARTIAL_ROOT, str(item.id))
+        os.makedirs(item.partial_dir, exist_ok=True)
         cmd = ytdlp.build_download_cmd(
             item.url,
             self.settings,
@@ -65,6 +70,7 @@ class DownloadManager:
             trim_end=item.trim_end,
             split_chapters=item.split_chapters,
             trim_accurate=item.trim_accurate,
+            partial_dir=item.partial_dir,
         )
         item.status = "DOWNLOADING"
         item.progress = 0.0
@@ -159,8 +165,18 @@ class DownloadManager:
         else:
             item.status = "ERROR"
             item.error = "\n".join(item.log_tail[-4:]) or "خطأ غير معروف"
+        if item.cancelled:
+            self._cleanup_partial(item)
+        elif code == 0:
+            self._cleanup_partial(item)
         self.on_update(item)
         self._pump()
+
+    def _cleanup_partial(self, item):
+        """Delete the per-item temp dir (partials, fragments, ffmpeg temps)."""
+        path = getattr(item, "partial_dir", None)
+        if path:
+            shutil.rmtree(path, ignore_errors=True)
 
     # ---------- controls ----------
     def _kill(self, item):
@@ -184,12 +200,12 @@ class DownloadManager:
         if item.process:
             item.status = "CANCELLED"
             self._kill(item)
-        else:
-            # waiting in queue
-            if item in self.queue:
-                self.queue.remove(item)
-            item.status = "CANCELLED"
-            self.on_update(item)
+            return
+        if item in self.queue:
+            self.queue.remove(item)
+        self._cleanup_partial(item)
+        item.status = "CANCELLED"
+        self.on_update(item)
 
     def retry(self, item):
         self.enqueue(item, item.mode, item.selector, item.audio_format)
