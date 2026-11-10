@@ -24,6 +24,7 @@ from ui.dialogs import (
     SettingsDialog,
     SubtitleDialog,
     TrimDialog,
+    subtitle_codes,
 )
 
 VERSION = ytdlp.ytdlp_version()
@@ -275,7 +276,8 @@ class DownloadRow(Gtk.ListBoxRow):
         elif it.status == "READY":
             self.actions.append(self._button(t("btn.download"), lambda b: w.quick_download(it), "suggested-action"))
             self.actions.append(self._button(t("btn.format"), lambda b: w.choose_format(it)))
-            self.actions.append(self._button(t("btn.subtitle"), lambda b: w.choose_subtitle(it)))
+            if it.info is None or subtitle_codes(it.info):
+                self.actions.append(self._button(t("btn.subtitle"), lambda b: w.choose_subtitle(it)))
             self.actions.append(self._button(t("btn.trim"), lambda b: w.choose_trim(it)))
             self.actions.append(self._button(t("btn.remove"), lambda b: w.remove_item(it)))
         elif it.status == "DONE":
