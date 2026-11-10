@@ -73,7 +73,7 @@ class DownloadItem:
         self.trim_end = ""
         self.split_chapters = False
         self.trim_accurate = True
-        self.sub_langs = None  # None = follow settings, "" = off, "ar,en" = per-item
+        self.sub_langs = ""  # "" = off, "ar" = per-item language
         self.embed_subs = True
         self.process = None
         self.cancelled = False

@@ -127,14 +127,10 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
         out.append("--embed-thumbnail")
     if settings["embed_metadata"]:
         out.append("--embed-metadata")
-    if sub_langs is None:
-        langs = (settings["sub_langs"] or "en") if settings["write_subs"] else ""
-        embed = True
-    else:
-        langs = (sub_langs or "").strip()
-        embed = True if embed_subs is None else bool(embed_subs)
+    langs = (sub_langs or "").strip()
     if langs:
         out += ["--write-subs", "--write-auto-subs", "--sub-langs", langs]
+        embed = True if embed_subs is None else bool(embed_subs)
         if embed:
             out.append("--embed-subs")
     if settings["sponsorblock"]:

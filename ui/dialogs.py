@@ -118,14 +118,6 @@ class SettingsDialog(Gtk.Window):
         self.meta_check.set_active(bool(settings["embed_metadata"]))
         box.append(self.meta_check)
 
-        self.subs_check = Gtk.CheckButton(label=t("settings.subs"))
-        self.subs_check.set_active(bool(settings["write_subs"]))
-        box.append(self.subs_check)
-
-        self.sub_langs = Gtk.Entry(text=settings["sub_langs"])
-        box.append(_row(t("settings.sub_langs"), self.sub_langs,
-                        t("settings.sub_langs_tip")))
-
         self.sb_check = Gtk.CheckButton(label=t("settings.sb"))
         self.sb_check.set_active(bool(settings["sponsorblock"]))
         box.append(self.sb_check)
@@ -216,8 +208,6 @@ class SettingsDialog(Gtk.Window):
         self.frag_spin.set_value(int(d["concurrent_fragments"]))
         self.thumb_check.set_active(bool(d["embed_thumbnail"]))
         self.meta_check.set_active(bool(d["embed_metadata"]))
-        self.subs_check.set_active(bool(d["write_subs"]))
-        self.sub_langs.set_text(d["sub_langs"])
         self.sb_check.set_active(bool(d["sponsorblock"]))
         self.cookies_dd.set_selected(0)
         self.cookies_file_entry.set_text(d["cookies_file"])
@@ -286,8 +276,6 @@ class SettingsDialog(Gtk.Window):
         s["format_preset"] = PRESET_VALUES[self.preset_dd.get_selected()]
         s["embed_thumbnail"] = self.thumb_check.get_active()
         s["embed_metadata"] = self.meta_check.get_active()
-        s["write_subs"] = self.subs_check.get_active()
-        s["sub_langs"] = self.sub_langs.get_text().strip() or "en"
         s["sponsorblock"] = self.sb_check.get_active()
         s["external_downloader"] = ENGINE_VALUES[self.engine_dd.get_selected()]
         s["aria2c_connections"] = int(self.conn_spin.get_value())
@@ -896,9 +884,7 @@ class SubtitleDialog(Gtk.Window):
         box.set_margin_end(14)
 
         self.enable = Gtk.CheckButton(label=t("sub.enable"))
-        initial_on = item.sub_langs is not None and item.sub_langs != ""
-        if item.sub_langs is None:
-            initial_on = bool(settings.get("write_subs"))
+        initial_on = bool(item.sub_langs)
         self.enable.set_active(bool(initial_on))
         box.append(self.enable)
 

@@ -248,12 +248,9 @@ class DownloadRow(Gtk.ListBoxRow):
         if it.trim_start or it.trim_end:
             rng = f"{it.trim_start or '0:00'}–{it.trim_end}" if it.trim_end else f"{it.trim_start or '0:00'}→"
             chunks.append(t("trim.indicator", range=rng))
-        if it.sub_langs is not None:
-            if it.sub_langs == "":
-                chunks.append(t("sub.off"))
-            else:
-                key = "sub.indicator_embedded" if it.embed_subs else "sub.indicator"
-                chunks.append(t(key, lang=it.sub_langs))
+        if it.sub_langs:
+            key = "sub.indicator_embedded" if it.embed_subs else "sub.indicator"
+            chunks.append(t(key, lang=it.sub_langs))
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
