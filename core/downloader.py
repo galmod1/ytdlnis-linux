@@ -3,6 +3,7 @@
 import subprocess
 import threading
 import time
+import os
 
 import gi
 
@@ -63,6 +64,7 @@ class DownloadManager:
             trim_start=item.trim_start,
             trim_end=item.trim_end,
             split_chapters=item.split_chapters,
+            trim_accurate=item.trim_accurate,
         )
         item.status = "DOWNLOADING"
         item.progress = 0.0
@@ -78,6 +80,7 @@ class DownloadManager:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                start_new_session=True,
             )
         except Exception as exc:  # pragma: no cover
             item.status = "ERROR"
@@ -160,16 +163,27 @@ class DownloadManager:
         self._pump()
 
     # ---------- controls ----------
+    def _kill(self, item):
+        if not item.process:
+            return
+        try:
+            os.killpg(os.getpgid(item.process.pid), 15)
+        except (ProcessLookupError, PermissionError):
+            try:
+                item.process.terminate()
+            except Exception:
+                pass
+
     def pause(self, item):
         if item.status == "DOWNLOADING" and item.process:
             item.status = "PAUSED"
-            item.process.terminate()
+            self._kill(item)
 
     def cancel(self, item):
         item.cancelled = True
         if item.process:
             item.status = "CANCELLED"
-            item.process.terminate()
+            self._kill(item)
         else:
             # waiting in queue
             if item in self.queue:

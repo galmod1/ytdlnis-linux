@@ -57,6 +57,7 @@ class DownloadItem:
         self.trim_start = ""
         self.trim_end = ""
         self.split_chapters = False
+        self.trim_accurate = True
         self.process = None
         self.cancelled = False
         self.started_at = 0.0

@@ -98,7 +98,8 @@ def resolve_selector(preset, item=None):
 
 
 def build_download_cmd(url, settings, mode="video", selector="", audio_format="mp3",
-                       trim_start="", trim_end="", split_chapters=False):
+                       trim_start="", trim_end="", split_chapters=False,
+                       trim_accurate=True):
     template = settings["filename_template"]
     if split_chapters:
         base = template
@@ -144,7 +145,9 @@ def build_download_cmd(url, settings, mode="video", selector="", audio_format="m
     if start_sec is not None or end_sec is not None:
         start_s = f"{start_sec:02d}" if start_sec is not None else "0"
         sect = f"*{start_s}-" + (str(end_sec) if end_sec is not None else "")
-        out += ["--download-sections", sect, "--force-keyframes-at-cuts"]
+        out += ["--download-sections", sect]
+        if trim_accurate:
+            out += ["--force-keyframes-at-cuts"]
     if split_chapters:
         out += ["--split-chapters"]
     if mode == "audio":

@@ -666,6 +666,11 @@ class TrimDialog(Gtk.Window):
         chapter_note.add_css_class("dim")
         box.append(chapter_note)
 
+        self.accurate = Gtk.CheckButton(label=t("trim.accurate"))
+        self.accurate.set_active(bool(item.trim_accurate))
+        self.accurate.set_tooltip_text(t("trim.accurate_tip"))
+        box.append(self.accurate)
+
         self.note = Gtk.Label(label="", xalign=0)
         self.note.set_wrap(True)
         self.note.add_css_class("dim")
@@ -718,6 +723,7 @@ class TrimDialog(Gtk.Window):
         self.item.trim_start = start
         self.item.trim_end = end
         self.item.split_chapters = self.split.get_active()
+        self.item.trim_accurate = self.accurate.get_active()
         self.on_saved()
         self.destroy()
 

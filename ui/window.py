@@ -2,6 +2,7 @@
 """Main window and download rows."""
 import os
 import subprocess
+import time
 from urllib.parse import urlparse
 
 import gi
@@ -171,6 +172,9 @@ class DownloadRow(Gtk.ListBoxRow):
                 chunks.append(it.speed)
             if it.eta:
                 chunks.append(t("row.remaining", eta=it.eta))
+            if not it.speed and not it.progress:
+                elapsed = int(time.time() - it.started_at) if it.started_at else 0
+                chunks.append(t("trim.elapsed", t=time.strftime("%M:%S", time.gmtime(elapsed))))
         elif it.status == "DONE":
             if it.filepath:
                 chunks.append(os.path.basename(it.filepath))
@@ -314,6 +318,13 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_child(root)
         self.update_footer()
         self.connect("close-request", self._on_close)
+        GLib.timeout_add_seconds(1, self._tick)
+
+    def _tick(self):
+        for it in list(self.items.values()):
+            if it.status in ("DOWNLOADING", "PROCESSING"):
+                self.refresh(it)
+        return True
 
     # ---------- adding ----------
     def _on_add(self, _w):
@@ -656,8 +667,5 @@ class MainWindow(Gtk.ApplicationWindow):
     def _on_close(self, _w):
         for it in list(self.items.values()):
             if it.process:
-                try:
-                    it.process.terminate()
-                except Exception:
-                    pass
+                self.manager._kill(it)
         return False
