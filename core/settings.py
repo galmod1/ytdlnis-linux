@@ -45,6 +45,7 @@ DEFAULTS = {
     "speed_limit_kb": 0,
     "language": "ar",
     "theme": "system",
+    "thumb_zoom": 1.0,
 }
 
 

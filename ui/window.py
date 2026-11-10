@@ -164,8 +164,13 @@ class DownloadRow(Gtk.ListBoxRow):
     # ---------- helpers ----------
     def _update_thumb_size(self):
         win_w = self.win.get_width() or 920
-        width = max(120, min(420, int(win_w / 4)))
-        height = max(68, int(width * 9 / 16))
+        try:
+            zoom = float(self.win.settings.get("thumb_zoom", 1.0))
+        except (TypeError, ValueError):
+            zoom = 1.0
+        width = int((win_w / 7) * zoom)
+        width = max(80, min(480, width))
+        height = max(45, int(width * 9 / 16))
         self.thumb_stack.set_size_request(width, height)
 
     def _maybe_load_thumb(self):
@@ -363,11 +368,25 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.footer = Gtk.Label(label="", xalign=0)
         self.footer.add_css_class("dim")
-        self.footer.set_margin_top(6)
-        self.footer.set_margin_bottom(8)
-        self.footer.set_margin_start(12)
-        self.footer.set_margin_end(12)
-        root.append(self.footer)
+        self.footer.set_hexpand(True)
+
+        footer_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        footer_box.set_margin_top(6)
+        footer_box.set_margin_bottom(8)
+        footer_box.set_margin_start(12)
+        footer_box.set_margin_end(12)
+        footer_box.append(self.footer)
+
+        zoom_out = Gtk.Button(label="−")
+        zoom_out.set_tooltip_text(t("thumb.smaller"))
+        zoom_out.connect("clicked", lambda b: self.zoom_thumbs(-1))
+        footer_box.append(zoom_out)
+        zoom_in = Gtk.Button(label="+")
+        zoom_in.set_tooltip_text(t("thumb.bigger"))
+        zoom_in.connect("clicked", lambda b: self.zoom_thumbs(1))
+        footer_box.append(zoom_in)
+
+        root.append(footer_box)
 
         self.set_child(root)
         self.update_footer()
@@ -375,15 +394,25 @@ class MainWindow(Gtk.ApplicationWindow):
         GLib.timeout_add_seconds(1, self._tick)
 
     def _tick(self):
-        width = self.get_width()
-        if width and width != getattr(self, "_last_width", None):
-            self._last_width = width
-            for row in self.rows.values():
-                row._update_thumb_size()
         for it in list(self.items.values()):
             if it.status in ("DOWNLOADING", "PROCESSING"):
                 self.refresh(it)
         return True
+
+    def zoom_thumbs(self, direction):
+        try:
+            zoom = float(self.settings.get("thumb_zoom", 1.0))
+        except (TypeError, ValueError):
+            zoom = 1.0
+        zoom = zoom * 1.25 if direction > 0 else zoom / 1.25
+        zoom = max(0.5, min(3.0, zoom))
+        self.settings["thumb_zoom"] = round(zoom, 3)
+        try:
+            self.settings.save()
+        except OSError:
+            pass
+        for row in self.rows.values():
+            row._update_thumb_size()
 
     # ---------- adding ----------
     def _on_add(self, _w):
