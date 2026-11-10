@@ -76,6 +76,7 @@ class DownloadItem:
         self.sub_langs = ""  # "" = off, "ar" = per-item language
         self.embed_subs = True
         self.schedule_at = 0.0
+        self.format_chosen = False
         self.video_id = ""
         self.existing_path = ""
         self.process = None

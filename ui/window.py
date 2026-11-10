@@ -211,7 +211,7 @@ class DownloadRow(Gtk.ListBoxRow):
         group = self.win.groups.get(it.gid) if it.gid else None
         if group and group.get("format"):
             mode, selector, af = group["format"]
-        elif it.selector or it.mode == "audio":
+        elif it.selector or it.format_chosen or it.mode == "audio":
             mode, selector, af = it.mode, it.selector, it.audio_format
         else:
             from core.ytdlp import resolve_selector
@@ -625,7 +625,9 @@ class MainWindow(Gtk.ApplicationWindow):
         from core.ytdlp import resolve_selector
 
         g = self.groups.get(item.gid) if item.gid else None
-        if g and g.get("format"):
+        if item.format_chosen:
+            mode, selector, af = item.mode, item.selector, item.audio_format
+        elif g and g.get("format"):
             mode, selector, af = g["format"]
         else:
             mode, selector, af = resolve_selector(self.settings["format_preset"])
@@ -676,9 +678,16 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def _open_format_dialog(self, item):
         def chosen(mode, selector, af):
-            self.manager.enqueue(item, mode, selector, af)
+            self._apply_format_choice(item, mode, selector, af)
 
         FormatDialog(self, item, chosen).present()
+
+    def _apply_format_choice(self, item, mode, selector, af):
+        item.mode = mode
+        item.selector = selector
+        item.audio_format = af
+        item.format_chosen = True
+        self.refresh(item)
 
     def pause_item(self, item):
         self.manager.pause(item)
