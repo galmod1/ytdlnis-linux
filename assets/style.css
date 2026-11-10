@@ -25,6 +25,14 @@ progressbar progress {
   min-height: 6px;
   border-radius: 3px;
 }
+.dup-badge {
+  color: #e5a50a;
+  font-weight: 700;
+  font-size: 1.05em;
+  background-color: alpha(#e5a50a, 0.16);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
 list.boxed-list row {
   padding: 6px 10px;
 }

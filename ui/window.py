@@ -157,6 +157,12 @@ class DownloadRow(Gtk.ListBoxRow):
         self.info.add_css_class("dim")
         box.append(self.info)
 
+        self.dup = Gtk.Label(label="", xalign=0)
+        self.dup.add_css_class("dup-badge")
+        self.dup.set_visible(False)
+        self.dup.set_wrap(True)
+        box.append(self.dup)
+
         self.bar = Gtk.ProgressBar()
         self.bar.set_show_text(False)
         box.append(self.bar)
@@ -262,7 +268,11 @@ class DownloadRow(Gtk.ListBoxRow):
                 )
             )
         if it.existing_path:
-            chunks.append(t("dup.existing", name=os.path.basename(it.existing_path)))
+            self.dup.set_text(t("dup.existing", name=os.path.basename(it.existing_path)))
+            self.dup.set_tooltip_text(it.existing_path)
+            self.dup.set_visible(True)
+        else:
+            self.dup.set_visible(False)
         self.info.set_text(" • ".join(chunks))
 
         if it.status in ("DOWNLOADING", "PROCESSING", "PAUSED"):
