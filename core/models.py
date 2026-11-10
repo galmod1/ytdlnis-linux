@@ -78,6 +78,7 @@ class DownloadItem:
         self.schedule_at = 0.0
         self.format_chosen = False
         self.download_dir = ""
+        self.dup_index = 0
         self.video_id = ""
         self.existing_path = ""
         self.process = None

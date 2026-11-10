@@ -66,6 +66,13 @@ class DownloadManager:
         settings = dict(self.settings)
         if getattr(item, "download_dir", ""):
             settings["download_dir"] = item.download_dir
+        index = getattr(item, "dup_index", 0)
+        if index:
+            template = settings["filename_template"]
+            if template.endswith(".%(ext)s"):
+                settings["filename_template"] = (
+                    template[: -len(".%(ext)s")] + f" ({index}).%(ext)s"
+                )
         cmd = ytdlp.build_download_cmd(
             item.url,
             settings,

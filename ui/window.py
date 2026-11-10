@@ -644,11 +644,26 @@ class MainWindow(Gtk.ApplicationWindow):
         item.download_dir = path
         found = history.find(path, item.video_id)
         item.existing_path = found
+        item.dup_index = self._next_copy_index(found) if found else 0
         self.refresh(item)
         if found:
             self._confirm_redownload(item, found)
         else:
             self._enqueue_item(item)
+
+    def _next_copy_index(self, path):
+        stem, _ext = os.path.splitext(path)
+        folder = os.path.dirname(path) or "."
+        pattern = re.compile(re.escape(os.path.basename(stem)) + r" \((\d+)\)\.[^.]+$")
+        highest = 1
+        try:
+            for name in os.listdir(folder):
+                match = pattern.match(name)
+                if match:
+                    highest = max(highest, int(match.group(1)))
+        except OSError:
+            pass
+        return highest + 1
 
     def _confirm_redownload(self, item, path):
         ConfirmDialog(
