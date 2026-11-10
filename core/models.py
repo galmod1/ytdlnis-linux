@@ -77,6 +77,7 @@ class DownloadItem:
         self.embed_subs = True
         self.schedule_at = 0.0
         self.format_chosen = False
+        self.download_dir = ""
         self.video_id = ""
         self.existing_path = ""
         self.process = None

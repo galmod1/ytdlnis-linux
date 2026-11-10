@@ -27,6 +27,7 @@ DEFAULTS = {
     "download_dir": _default_download_dir(),
     "concurrent_downloads": 2,
     "filename_template": "%(title)s [%(id)s].%(ext)s",
+    "ask_download_dir": False,
     "embed_thumbnail": True,
     "embed_metadata": True,
     "write_subs": False,

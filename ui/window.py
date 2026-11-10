@@ -490,7 +490,7 @@ class MainWindow(Gtk.ApplicationWindow):
             if it.schedule_at and it.status == "READY" and now >= it.schedule_at:
                 it.schedule_at = 0.0
                 self.refresh(it)
-                self.quick_download(it)
+                self.quick_download(it, interactive=False)
         for it in list(self.items.values()):
             if it.status in ("DOWNLOADING", "PROCESSING"):
                 self.refresh(it)
@@ -621,7 +621,53 @@ class MainWindow(Gtk.ApplicationWindow):
             self.quick_download(item)
 
     # ---------- actions ----------
-    def quick_download(self, item):
+    def quick_download(self, item, interactive=True):
+        if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
+            return
+        item.schedule_at = 0.0
+        if (
+            interactive
+            and self.settings.get("ask_download_dir")
+            and not item.gid
+            and not item.download_dir
+        ):
+            FolderPickerDialog(
+                self,
+                self.settings["download_dir"],
+                lambda path: self._start_with_dir(item, path),
+            ).present()
+            return
+        self._enqueue_item(item)
+
+    def _start_with_dir(self, item, path):
+        item.download_dir = path
+        found = history.find(path, item.video_id)
+        item.existing_path = found
+        self.refresh(item)
+        if found:
+            self._confirm_redownload(item, found)
+        else:
+            self._enqueue_item(item)
+
+    def _confirm_redownload(self, item, path):
+        dialog = Gtk.AlertDialog()
+        dialog.set_message(t("dup.found_title"))
+        dialog.set_detail(t("dup.found_detail", name=os.path.basename(path)))
+        dialog.set_buttons([t("folder.cancel"), t("dup.again")])
+        dialog.set_cancel_button(0)
+        dialog.set_default_button(1)
+
+        def done(source, result):
+            try:
+                choice = source.choose_finish(result)
+            except GLib.Error:
+                return
+            if choice == 1:
+                self._enqueue_item(item)
+
+        dialog.choose(self, None, done)
+
+    def _enqueue_item(self, item):
         from core.ytdlp import resolve_selector
 
         g = self.groups.get(item.gid) if item.gid else None
@@ -633,7 +679,6 @@ class MainWindow(Gtk.ApplicationWindow):
             mode, selector, af = resolve_selector(self.settings["format_preset"])
         if item.status in ("DOWNLOADING", "QUEUED", "PAUSED"):
             return
-        item.schedule_at = 0.0
         self.manager.enqueue(item, mode, selector, af)
 
     def choose_schedule(self, item):

@@ -69,6 +69,11 @@ class SettingsDialog(Gtk.Window):
         self.folder_entry.set_hexpand(True)
         box.append(_row(t("settings.folder"), folder_box))
 
+        self.ask_dir_check = Gtk.CheckButton(label=t("settings.ask_dir"))
+        self.ask_dir_check.set_active(bool(settings["ask_download_dir"]))
+        self.ask_dir_check.set_tooltip_text(t("settings.ask_dir_tip"))
+        box.append(self.ask_dir_check)
+
         self.template_entry = Gtk.Entry(text=settings["filename_template"])
         box.append(_row(t("settings.template"), self.template_entry,
                         t("settings.template_tip")))
@@ -199,6 +204,7 @@ class SettingsDialog(Gtk.Window):
         self.lang_dd.set_selected(LANG_VALUES.index(d["language"]))
         self.theme_dd.set_selected(THEME_VALUES.index(d["theme"]))
         self.folder_entry.set_text(d["download_dir"])
+        self.ask_dir_check.set_active(bool(d["ask_download_dir"]))
         self.template_entry.set_text(d["filename_template"])
         self.conc_spin.set_value(int(d["concurrent_downloads"]))
         self.speed_spin.set_value(int(d["speed_limit_kb"]))
@@ -270,6 +276,7 @@ class SettingsDialog(Gtk.Window):
 
         old_lang = s.get("language", "ar")
         s["download_dir"] = new_dir
+        s["ask_download_dir"] = self.ask_dir_check.get_active()
         s["filename_template"] = self.template_entry.get_text().strip() or s["filename_template"]
         s["concurrent_downloads"] = int(self.conc_spin.get_value())
         s["speed_limit_kb"] = int(self.speed_spin.get_value())

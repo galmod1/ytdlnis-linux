@@ -63,9 +63,12 @@ class DownloadManager:
             return
         item.partial_dir = os.path.join(PARTIAL_ROOT, str(item.id))
         os.makedirs(item.partial_dir, exist_ok=True)
+        settings = dict(self.settings)
+        if getattr(item, "download_dir", ""):
+            settings["download_dir"] = item.download_dir
         cmd = ytdlp.build_download_cmd(
             item.url,
-            self.settings,
+            settings,
             mode=item.mode,
             selector=item.selector,
             audio_format=item.audio_format,
