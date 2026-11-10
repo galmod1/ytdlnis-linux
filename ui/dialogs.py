@@ -8,7 +8,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from core.i18n import LANGUAGE_NAMES, set_language, t
-from core.models import human_size, parse_time
+from core.models import human_size, parse_time, format_time
 from core.theme import THEME_KEYS, THEME_VALUES, apply_theme
 
 COOKIES_VALUES = ["", "firefox", "chrome", "chromium", "brave", "edge"]
@@ -625,10 +625,25 @@ class TrimDialog(Gtk.Window):
         self.end_entry = Gtk.Entry(text=item.trim_end)
         self.end_entry.set_placeholder_text("1:30")
         end_lab = Gtk.Label(label=t("trim.end"), xalign=0)
+
+        def time_box(entry):
+            bx = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            minus = Gtk.Button(label="−5")
+            minus.set_tooltip_text(t("trim.sub5"))
+            minus.connect("clicked", lambda b: self._nudge(entry, -5))
+            plus = Gtk.Button(label="+5")
+            plus.set_tooltip_text(t("trim.add5"))
+            plus.connect("clicked", lambda b: self._nudge(entry, 5))
+            entry.set_hexpand(True)
+            bx.append(minus)
+            bx.append(entry)
+            bx.append(plus)
+            return bx
+
         form.attach(start_lab, 0, 0, 1, 1)
-        form.attach(self.start_entry, 1, 0, 1, 1)
+        form.attach(time_box(self.start_entry), 1, 0, 1, 1)
         form.attach(end_lab, 0, 1, 1, 1)
-        form.attach(self.end_entry, 1, 1, 1, 1)
+        form.attach(time_box(self.end_entry), 1, 1, 1, 1)
         box.append(form)
 
         hint = Gtk.Label(label=t("trim.hint"), xalign=0)
@@ -681,6 +696,10 @@ class TrimDialog(Gtk.Window):
 
         root.append(actions)
         self.set_child(root)
+
+    def _nudge(self, entry, delta):
+        cur = parse_time(entry.get_text()) or 0
+        entry.set_text(format_time(max(0, cur + delta)))
 
     def _save(self, _b):
         start = self.start_entry.get_text().strip() if self.enable.get_active() else ""
