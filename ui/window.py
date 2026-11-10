@@ -157,10 +157,16 @@ class DownloadRow(Gtk.ListBoxRow):
         self.info.add_css_class("dim")
         box.append(self.info)
 
-        self.dup = Gtk.Label(label="", xalign=0)
-        self.dup.add_css_class("dup-badge")
+        self.dup = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.dup_badge = Gtk.Label(label=t("dup.badge"))
+        self.dup_badge.add_css_class("dup-badge")
+        self.dup_name = Gtk.Label(label="", xalign=0)
+        self.dup_name.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        self.dup_name.set_hexpand(True)
+        self.dup_name.add_css_class("dim")
+        self.dup.append(self.dup_badge)
+        self.dup.append(self.dup_name)
         self.dup.set_visible(False)
-        self.dup.set_wrap(True)
         box.append(self.dup)
 
         self.bar = Gtk.ProgressBar()
@@ -268,8 +274,8 @@ class DownloadRow(Gtk.ListBoxRow):
                 )
             )
         if it.existing_path:
-            self.dup.set_text(t("dup.existing", name=os.path.basename(it.existing_path)))
-            self.dup.set_tooltip_text(it.existing_path)
+            self.dup_name.set_text(os.path.basename(it.existing_path))
+            self.dup_name.set_tooltip_text(it.existing_path)
             self.dup.set_visible(True)
         else:
             self.dup.set_visible(False)
