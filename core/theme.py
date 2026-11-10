@@ -122,6 +122,19 @@ button.suggested-action {{
 button.suggested-action:hover {{
   background-color: {accent};
 }}
+button:hover {{
+  background-image: none;
+  background-color: alpha({accent}, 0.20);
+}}
+stackswitcher > button:hover {{
+  background-color: alpha({accent}, 0.28);
+}}
+stackswitcher > button:checked:hover {{
+  background-color: {accent};
+}}
+row:hover {{
+  background-color: alpha({accent}, 0.10);
+}}
 stackswitcher > button:checked {{
   background-image: none;
   background-color: {accent};
