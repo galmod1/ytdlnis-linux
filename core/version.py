@@ -2,4 +2,4 @@
 """Application version, shown in the UI and release metadata."""
 
 APP_NAME = "YTDLnis Linux"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
