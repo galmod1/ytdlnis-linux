@@ -128,7 +128,6 @@ class DownloadRow(Gtk.ListBoxRow):
         outer.set_margin_end(12)
 
         self.thumb_stack = Gtk.Stack()
-        self.thumb_stack.set_size_request(112, 63)
         self.thumb_stack.set_valign(Gtk.Align.CENTER)
         self.thumb_stack.add_named(
             Gtk.Image.new_from_icon_name("video-x-generic-symbolic"), "ph"
@@ -137,6 +136,7 @@ class DownloadRow(Gtk.ListBoxRow):
         self.picture.set_content_fit(Gtk.ContentFit.COVER)
         self.picture.set_can_shrink(True)
         self.thumb_stack.add_named(self.picture, "pic")
+        self._update_thumb_size()
         outer.append(self.thumb_stack)
 
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -162,6 +162,12 @@ class DownloadRow(Gtk.ListBoxRow):
         self.refresh()
 
     # ---------- helpers ----------
+    def _update_thumb_size(self):
+        win_w = self.win.get_width() or 920
+        width = max(120, min(420, int(win_w / 4)))
+        height = max(68, int(width * 9 / 16))
+        self.thumb_stack.set_size_request(width, height)
+
     def _maybe_load_thumb(self):
         url = self.item.thumb
         if not url or getattr(self.item, "_thumb_loaded", "") == url:
@@ -369,6 +375,11 @@ class MainWindow(Gtk.ApplicationWindow):
         GLib.timeout_add_seconds(1, self._tick)
 
     def _tick(self):
+        width = self.get_width()
+        if width and width != getattr(self, "_last_width", None):
+            self._last_width = width
+            for row in self.rows.values():
+                row._update_thumb_size()
         for it in list(self.items.values()):
             if it.status in ("DOWNLOADING", "PROCESSING"):
                 self.refresh(it)
