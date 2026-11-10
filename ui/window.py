@@ -8,10 +8,11 @@ from urllib.parse import urlparse
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Pango", "1.0")
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import Gdk, GLib, Gtk, Pango
 
-from core import ytdlp
+from core import thumbs, ytdlp
 from core.downloader import DownloadManager, fetch_async
 from core.i18n import t
 from core.models import DownloadItem
@@ -118,10 +119,25 @@ class DownloadRow(Gtk.ListBoxRow):
         self.add_css_class("dl-row")
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        box.set_margin_top(10)
-        box.set_margin_bottom(10)
-        box.set_margin_start(12)
-        box.set_margin_end(12)
+        box.set_hexpand(True)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        outer.set_margin_top(8)
+        outer.set_margin_bottom(8)
+        outer.set_margin_start(10)
+        outer.set_margin_end(12)
+
+        self.thumb_stack = Gtk.Stack()
+        self.thumb_stack.set_size_request(112, 63)
+        self.thumb_stack.set_valign(Gtk.Align.CENTER)
+        self.thumb_stack.add_named(
+            Gtk.Image.new_from_icon_name("video-x-generic-symbolic"), "ph"
+        )
+        self.picture = Gtk.Picture()
+        self.picture.set_content_fit(Gtk.ContentFit.COVER)
+        self.picture.set_can_shrink(True)
+        self.thumb_stack.add_named(self.picture, "pic")
+        outer.append(self.thumb_stack)
 
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.title = Gtk.Label(label=item.title, xalign=0, hexpand=True)
@@ -141,10 +157,28 @@ class DownloadRow(Gtk.ListBoxRow):
         self.bar.set_show_text(False)
         box.append(self.bar)
 
-        self.set_child(box)
+        outer.append(box)
+        self.set_child(outer)
         self.refresh()
 
     # ---------- helpers ----------
+    def _maybe_load_thumb(self):
+        url = self.item.thumb
+        if not url or getattr(self.item, "_thumb_loaded", "") == url:
+            return
+        self.item._thumb_loaded = url
+        thumbs.fetch_async(url, self._on_thumb)
+
+    def _on_thumb(self, data):
+        if not data:
+            return
+        try:
+            texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(data))
+        except Exception:
+            return
+        self.picture.set_paintable(texture)
+        self.thumb_stack.set_visible_child_name("pic")
+
     def _button(self, label, cb, css=None):
         btn = Gtk.Button(label=label)
         if css:
@@ -164,6 +198,7 @@ class DownloadRow(Gtk.ListBoxRow):
         it = self.item
         self.title.set_text(it.title or it.url)
         self.title.set_tooltip_text(it.title)
+        self._maybe_load_thumb()
 
         chunks = [t(f"status.{it.status.lower()}") if it.status else it.status]
         if it.status in ("DOWNLOADING", "PROCESSING"):
@@ -417,6 +452,10 @@ class MainWindow(Gtk.ApplicationWindow):
                     entry_mode=True,
                 )
                 child.gid = gid
+                entry_thumb = thumbs.pick_entry_thumb(e)
+                if entry_thumb:
+                    child.thumb = entry_thumb
+                    self.refresh(child)
                 self.groups[gid]["items"].append(child)
                 count += 1
             grow.set_title(title_g, count)
