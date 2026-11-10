@@ -1073,3 +1073,52 @@ class ScheduleDialog(Gtk.Window):
         self.item.schedule_at = 0.0
         self.on_saved()
         self.destroy()
+
+
+class ConfirmDialog(Gtk.Window):
+    """Explicit two-button confirmation (avoids RTL ambiguity of system dialogs)."""
+
+    def __init__(self, parent, title, message, confirm_label, on_confirm):
+        super().__init__(title=title, modal=True, transient_for=parent)
+        self.set_default_size(480, 220)
+        self.on_confirm = on_confirm
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_top(16)
+        box.set_margin_bottom(16)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+
+        label = Gtk.Label(label=message, xalign=0)
+        label.set_wrap(True)
+        box.append(label)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        root.append(box)
+        root.append(Gtk.Separator())
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_margin_top(10)
+        actions.set_margin_bottom(10)
+        actions.set_margin_start(12)
+        actions.set_margin_end(12)
+
+        cancel_btn = Gtk.Button(label=t("folder.cancel"))
+        cancel_btn.connect("clicked", lambda b: self.destroy())
+        actions.append(cancel_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions.append(spacer)
+
+        ok_btn = Gtk.Button(label=confirm_label)
+        ok_btn.add_css_class("suggested-action")
+        ok_btn.connect("clicked", self._cfm)
+        actions.append(ok_btn)
+
+        root.append(actions)
+        self.set_child(root)
+
+    def _cfm(self, _b):
+        self.destroy()
+        self.on_confirm()

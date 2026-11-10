@@ -20,6 +20,7 @@ from core.models import DownloadItem, pick_thumb
 from core.version import APP_NAME, APP_VERSION
 from core import history
 from ui.dialogs import (
+    ConfirmDialog,
     FormatDialog,
     FolderPickerDialog,
     PlaylistFormatDialog,
@@ -650,22 +651,13 @@ class MainWindow(Gtk.ApplicationWindow):
             self._enqueue_item(item)
 
     def _confirm_redownload(self, item, path):
-        dialog = Gtk.AlertDialog()
-        dialog.set_message(t("dup.found_title"))
-        dialog.set_detail(t("dup.found_detail", name=os.path.basename(path)))
-        dialog.set_buttons([t("folder.cancel"), t("dup.again")])
-        dialog.set_cancel_button(0)
-        dialog.set_default_button(1)
-
-        def done(source, result):
-            try:
-                choice = source.choose_finish(result)
-            except GLib.Error:
-                return
-            if choice == 1:
-                self._enqueue_item(item)
-
-        dialog.choose(self, None, done)
+        ConfirmDialog(
+            self,
+            t("dup.found_title"),
+            t("dup.found_detail", name=os.path.basename(path)),
+            t("dup.again"),
+            lambda: self._enqueue_item(item),
+        ).present()
 
     def _enqueue_item(self, item):
         from core.ytdlp import resolve_selector
