@@ -53,11 +53,18 @@ class SettingsDialog(Gtk.Window):
         self.settings = settings
         self.on_saved = on_saved
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
-        box.set_margin_top(16)
-        box.set_margin_bottom(16)
-        box.set_margin_start(16)
-        box.set_margin_end(16)
+        def make_page():
+            page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+            page.set_margin_top(16)
+            page.set_margin_bottom(16)
+            page.set_margin_start(16)
+            page.set_margin_end(16)
+            return page
+
+        box = make_page()            # General
+        appearance_box = make_page()
+        download_box = make_page()
+        network_box = make_page()
 
         self.lang_dd = Gtk.DropDown.new_from_strings(
             [LANGUAGE_NAMES[code] for code in LANG_VALUES]
@@ -69,19 +76,19 @@ class SettingsDialog(Gtk.Window):
         self.theme_dd = Gtk.DropDown.new_from_strings([t(k) for k in THEME_KEYS])
         th = settings.get("theme", "system")
         self.theme_dd.set_selected(THEME_VALUES.index(th) if th in THEME_VALUES else 0)
-        box.append(_row(t("settings.appearance"), self.theme_dd))
+        appearance_box.append(_row(t("settings.appearance"), self.theme_dd))
 
         self.accent_dd = Gtk.DropDown.new_from_strings([t(k) for k in ACCENT_KEYS])
         accent = settings.get("accent", "blue")
         self.accent_dd.set_selected(ACCENT_VALUES.index(accent) if accent in ACCENT_VALUES else 0)
-        box.append(_row(t("settings.accent"), self.accent_dd))
+        appearance_box.append(_row(t("settings.accent"), self.accent_dd))
 
         self.font_dd = Gtk.DropDown.new_from_strings([t(k) for k in FONT_KEYS])
         font_scale = settings.get("font_scale", "normal")
         self.font_dd.set_selected(
             FONT_VALUES.index(font_scale) if font_scale in FONT_VALUES else 1
         )
-        box.append(_row(t("settings.font"), self.font_dd))
+        appearance_box.append(_row(t("settings.font"), self.font_dd))
 
         self.density_dd = Gtk.DropDown.new_from_strings(
             [t("density.comfortable"), t("density.compact")]
@@ -89,22 +96,22 @@ class SettingsDialog(Gtk.Window):
         self.density_dd.set_selected(
             0 if settings.get("row_density", "comfortable") == "comfortable" else 1
         )
-        box.append(_row(t("settings.density"), self.density_dd))
+        appearance_box.append(_row(t("settings.density"), self.density_dd))
 
         self.scale_dd = Gtk.DropDown.new_from_strings(SCALE_LABELS)
         scale_value = settings.get("ui_scale", 1.0)
         self.scale_dd.set_selected(
             SCALE_VALUES.index(scale_value) if scale_value in SCALE_VALUES else 0
         )
-        box.append(_row(t("settings.ui_scale"), self.scale_dd))
+        appearance_box.append(_row(t("settings.ui_scale"), self.scale_dd))
 
         self.contrast_check = Gtk.CheckButton(label=t("settings.contrast"))
         self.contrast_check.set_active(bool(settings.get("high_contrast", False)))
-        box.append(self.contrast_check)
+        appearance_box.append(self.contrast_check)
 
         self.motion_check = Gtk.CheckButton(label=t("settings.reduce_motion"))
         self.motion_check.set_active(bool(settings.get("reduce_motion", False)))
-        box.append(self.motion_check)
+        appearance_box.append(self.motion_check)
 
         self.folder_entry = Gtk.Entry(text=settings["download_dir"])
         folder_btn = Gtk.Button(label=t("settings.choose"))
@@ -126,61 +133,55 @@ class SettingsDialog(Gtk.Window):
 
         self.conc_spin = Gtk.SpinButton.new_with_range(1, 8, 1)
         self.conc_spin.set_value(int(settings["concurrent_downloads"]))
-        box.append(_row(t("settings.concurrent"), self.conc_spin))
+        download_box.append(_row(t("settings.concurrent"), self.conc_spin))
 
         self.speed_spin = Gtk.SpinButton.new_with_range(0, 1000000, 100)
         self.speed_spin.set_value(int(settings["speed_limit_kb"]))
-        box.append(_row(t("settings.speed"), self.speed_spin,
+        download_box.append(_row(t("settings.speed"), self.speed_spin,
                         t("settings.speed_tip")))
 
         self.quick_check = Gtk.CheckButton(label=t("settings.quick"))
         self.quick_check.set_active(bool(settings["quick_mode"]))
-        box.append(self.quick_check)
+        download_box.append(self.quick_check)
 
         preset_dd = Gtk.DropDown.new_from_strings([t(k) for k in PRESET_KEYS])
         if settings["format_preset"] in PRESET_VALUES:
             preset_dd.set_selected(PRESET_VALUES.index(settings["format_preset"]))
         self.preset_dd = preset_dd
-        box.append(_row(t("settings.default_format"), preset_dd))
-
-        box.append(Gtk.Separator())
+        download_box.append(_row(t("settings.default_format"), preset_dd))
 
         self.engine_dd = Gtk.DropDown.new_from_strings([t(k) for k in ENGINE_KEYS])
         if settings["external_downloader"] in ENGINE_VALUES:
             self.engine_dd.set_selected(ENGINE_VALUES.index(settings["external_downloader"]))
-        box.append(_row(t("settings.engine"), self.engine_dd,
+        network_box.append(_row(t("settings.engine"), self.engine_dd,
                         t("settings.engine_tip")))
 
         self.conn_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
         self.conn_spin.set_value(int(settings["aria2c_connections"]))
-        box.append(_row(t("settings.conns"), self.conn_spin))
+        network_box.append(_row(t("settings.conns"), self.conn_spin))
 
         self.frag_spin = Gtk.SpinButton.new_with_range(1, 16, 1)
         self.frag_spin.set_value(int(settings["concurrent_fragments"]))
-        box.append(_row(t("settings.frags"), self.frag_spin,
+        network_box.append(_row(t("settings.frags"), self.frag_spin,
                         t("settings.frags_tip")))
-
-        box.append(Gtk.Separator())
 
         self.thumb_check = Gtk.CheckButton(label=t("settings.embed_thumb"))
         self.thumb_check.set_active(bool(settings["embed_thumbnail"]))
-        box.append(self.thumb_check)
+        download_box.append(self.thumb_check)
 
         self.meta_check = Gtk.CheckButton(label=t("settings.embed_meta"))
         self.meta_check.set_active(bool(settings["embed_metadata"]))
-        box.append(self.meta_check)
+        download_box.append(self.meta_check)
 
         self.sb_check = Gtk.CheckButton(label=t("settings.sb"))
         self.sb_check.set_active(bool(settings["sponsorblock"]))
-        box.append(self.sb_check)
-
-        box.append(Gtk.Separator())
+        download_box.append(self.sb_check)
 
         self.cookie_labels = [t("cookies.none")] + COOKIES_VALUES[1:]
         self.cookies_dd = Gtk.DropDown.new_from_strings(self.cookie_labels)
         ck = settings["cookies_from_browser"] or ""
         self.cookies_dd.set_selected(COOKIES_VALUES.index(ck) if ck in COOKIES_VALUES else 0)
-        box.append(_row(t("settings.cookies"), self.cookies_dd,
+        network_box.append(_row(t("settings.cookies"), self.cookies_dd,
                         t("settings.cookies_tip")))
 
         self.cookies_file_entry = Gtk.Entry(text=settings.get("cookies_file", ""))
@@ -194,23 +195,39 @@ class SettingsDialog(Gtk.Window):
         imp_btn.connect("clicked", self._import_cookies)
         cf_box.append(imp_btn)
         self.cookies_file_entry.set_hexpand(True)
-        box.append(_row(t("settings.cookies_file"), cf_box,
+        network_box.append(_row(t("settings.cookies_file"), cf_box,
                         t("settings.cookies_file_tip")))
 
         self.proxy_entry = Gtk.Entry(text=settings["proxy"])
-        box.append(_row(t("settings.proxy"), self.proxy_entry,
+        network_box.append(_row(t("settings.proxy"), self.proxy_entry,
                         t("settings.proxy_tip")))
 
         self.extra_entry = Gtk.Entry(text=settings["extra_args"])
-        box.append(_row(t("settings.extra"), self.extra_entry,
+        network_box.append(_row(t("settings.extra"), self.extra_entry,
                         t("settings.extra_tip")))
 
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_child(box)
-        scrolled.set_vexpand(True)
+        stack = Gtk.Stack()
+        stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        for key, title_key, page in (
+            ("general", "settings.tab.general", box),
+            ("appearance", "settings.tab.appearance", appearance_box),
+            ("download", "settings.tab.download", download_box),
+            ("network", "settings.tab.network", network_box),
+        ):
+            sc = Gtk.ScrolledWindow()
+            sc.set_child(page)
+            sc.set_vexpand(True)
+            stack.add_titled(sc, key, t(title_key))
+
+        switcher = Gtk.StackSwitcher(stack=stack)
+        switcher.set_margin_top(10)
+        switcher.set_margin_start(12)
+        switcher.set_margin_end(12)
+        switcher.set_halign(Gtk.Align.CENTER)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        root.append(scrolled)
+        root.append(switcher)
+        root.append(stack)
         root.append(Gtk.Separator())
 
         self.note = Gtk.Label(label="", xalign=0)
