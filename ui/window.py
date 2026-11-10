@@ -43,6 +43,16 @@ SECTION_DEFS = [
     ("cancelled", "tab.cancelled"),
 ]
 
+SECTION_ACTIONS = {
+    "home": [("tab.remove_all", "remove")],
+    "downloading": [("btn.pause_all", "pause"), ("tab.cancel_all", "cancel")],
+    "queued": [("tab.remove_all", "remove")],
+    "paused": [("tab.resume_all", "resume"), ("tab.remove_all", "remove")],
+    "done": [("tab.remove_all", "remove"), ("tab.delete_all", "delete")],
+    "error": [("tab.retry_all", "retry"), ("tab.remove_all", "remove")],
+    "cancelled": [("tab.retry_all", "retry"), ("tab.remove_all", "remove")],
+}
+
 STATUS_SECTION = {
     "NEW": "home",
     "READY": "home",
@@ -972,8 +982,69 @@ class MainWindow(Gtk.ApplicationWindow):
         sc = Gtk.ScrolledWindow()
         sc.set_child(lb)
         sc.set_vexpand(True)
-        page = self.stack.add_titled(sc, key, t(title_key))
+        page_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        actions = SECTION_ACTIONS.get(key) or []
+        if actions:
+            bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            bar.set_margin_top(6)
+            bar.set_margin_bottom(6)
+            bar.set_margin_start(8)
+            bar.set_margin_end(8)
+            for label_key, action in actions:
+                btn = Gtk.Button(label=t(label_key))
+                btn.connect("clicked", lambda b, a=action, k=key: self.section_bulk(k, a))
+                bar.append(btn)
+            page_box.append(bar)
+        page_box.append(sc)
+        page = self.stack.add_titled(page_box, key, t(title_key))
         self.sections[key] = {"listbox": lb, "page": page, "title_key": title_key}
+
+    def _section_items(self, key):
+        return [
+            it
+            for it in list(self.items.values())
+            if STATUS_SECTION.get(it.status, "queued") == key
+        ]
+
+    def section_bulk(self, key, action):
+        items = self._section_items(key)
+        if not items:
+            return
+        if action == "remove":
+            for it in items:
+                self.remove_item(it)
+        elif action == "cancel":
+            for it in items:
+                self.manager.cancel(it)
+        elif action == "pause":
+            for it in items:
+                self.manager.pause(it)
+        elif action in ("resume", "retry"):
+            for it in items:
+                self.retry_item(it)
+        elif action == "delete":
+            self._confirm_delete(items)
+
+    def _confirm_delete(self, items):
+        ConfirmDialog(
+            self,
+            t("tab.delete_title"),
+            t("tab.delete_detail", n=len(items)),
+            t("tab.delete_confirm"),
+            lambda: self._delete_items(items),
+        ).present()
+
+    def _delete_items(self, items):
+        for it in items:
+            path = it.filepath
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+            self.remove_item(it)
+        history.invalidate()
+        self.update_footer()
 
     def _place_row(self, item, row):
         key = STATUS_SECTION.get(item.status, "queued")

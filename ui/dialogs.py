@@ -1114,7 +1114,8 @@ class ConfirmDialog(Gtk.Window):
         actions.set_margin_start(12)
         actions.set_margin_end(12)
 
-        skip_btn = Gtk.Button(label=t("dup.skip"))
+        skip_label = t("folder.cancel") if self.on_skip is None else t("dup.skip")
+        skip_btn = Gtk.Button(label=skip_label)
         skip_btn.connect("clicked", self._skip)
         actions.append(skip_btn)
 
